@@ -1,0 +1,11 @@
+{
+  "name": "pocket-tracker-server",
+  "version": "0.0.0",
+  "description": "",
+  "main": "server.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "aadarshp31",
+  "license": "CC-BY-NC-4.0"
+}
