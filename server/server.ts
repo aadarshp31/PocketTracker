@@ -1,18 +1,18 @@
-import express, { Request, Response } from 'express'
-import authRoutes from './routes/authRoutes';
 require('dotenv').config();
+import express, { Request, Response } from 'express'
+import { connectToRelationalDatabase, sequelize } from './config/dbConnection';
 const app = express();
 
-app.use(express.static('public'))
+app.use(express.static('public'));
 
-app.get('/api/', (req: Request, res: Response) => {
+connectToRelationalDatabase();
+
+app.get('/api/', async (req: Request, res: Response) => {
   res.json({
     message: "api is live"
   });
 });
 
-
-app.use("/api/auth", authRoutes);
 
 app.listen(process.env.PORT, () => {
   console.info(`server is running at port: ${process.env.PORT}`);
