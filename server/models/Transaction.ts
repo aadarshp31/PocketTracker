@@ -4,9 +4,9 @@ import { sequelize } from "../config/dbConnection";
 
 const Transaction = sequelize.define('transaction', {
   id: {
-    type: DataTypes.UUIDV4,
-    primaryKey: true,
-    allowNull: false
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
   },
   amount: {
     type: DataTypes.DECIMAL(2),
@@ -34,8 +34,9 @@ const Transaction = sequelize.define('transaction', {
     onDelete: "CASCADE"
   }
 }, {
-  createdAt: true,
-  updatedAt: true
+  timestamps: true,
+  deletedAt: true,
+  paranoid: true
 });
 
 export default Transaction;

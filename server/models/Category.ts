@@ -4,9 +4,9 @@ import { sequelize } from "../config/dbConnection";
 
 const Category = sequelize.define('category', {
   id: {
-    type: DataTypes.UUIDV4,
-    primaryKey: true,
-    allowNull: false
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
   },
   name: {
     type: DataTypes.STRING(100),
@@ -23,8 +23,9 @@ const Category = sequelize.define('category', {
     onDelete: "CASCADE"
   }
 }, {
-  createdAt: true,
-  updatedAt: true
+  timestamps: true,
+  deletedAt: true,
+  paranoid: true
 })
 
 export default Category;
