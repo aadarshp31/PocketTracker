@@ -1,12 +1,11 @@
 import { DataTypes } from "sequelize";
 import { sequelize } from "../config/dbConnection";
 
-
-const User = sequelize.define('user', {
+const UserModel = sequelize.define('user', {
   id: {
-    type: DataTypes.UUIDV4,
-    primaryKey: true,
-    autoIncrement: true
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
   },
   first_name: {
     type: DataTypes.STRING(255),
@@ -33,8 +32,9 @@ const User = sequelize.define('user', {
     }
   }
 }, {
-  createdAt: true,
-  updatedAt: true
+  timestamps: true,
+  deletedAt: true,
+  paranoid: true
 });
 
-export default User;
+export default UserModel;
