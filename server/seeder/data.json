@@ -100,5 +100,19 @@
     {"id":"eeed114f-b2af-4888-8f56-9fef2443ff3a","first_name":"Riki","last_name":"Matfin","email":"rmatfin2p@forbes.com","createdAt":"6/27/2024","updatedAt":"9/26/2024"},
     {"id":"275f0779-33d4-4915-92dd-e5df434b41db","first_name":"Kristy","last_name":"Kitteman","email":"kkitteman2q@wordpress.com","createdAt":"5/23/2024","updatedAt":"10/28/2024"},
     {"id":"06765ba0-95d3-4171-91bc-d56d5a28fc55","first_name":"Anne-corinne","last_name":"Grisdale","email":"agrisdale2r@mail.ru","createdAt":"10/2/2024","updatedAt":"4/16/2024"}
+  ],
+  "category": [
+    {"id":"d088988f-b483-482f-a448-c5cf150deba0","name":"Salary","type":"income","is_default":"true","user_id":null,"createdAt":"5/9/2024","updatedAt":"6/29/2024"},
+    {"id":"c3f9d07a-6021-4b74-8321-13545e2088f9","name":"Groceries","type":"expense","is_default":"true","user_id":null,"createdAt":"1/6/2024","updatedAt":"1/4/2024"},
+    {"id":"38b104f9-597e-48b9-9d00-df480bfbeb2a","name":"Rent","type":"expense","is_default":"true","user_id":null,"createdAt":"6/21/2024","updatedAt":"9/25/2024"},
+    {"id":"4a692c2a-2fa9-494e-bb6c-0fffcab61d5e","name":"Utilities","type":"expense","is_default":"true","user_id":null,"createdAt":"10/31/2024","updatedAt":"6/28/2024"},
+    {"id":"ff3411be-a592-42ad-b3f1-47f9621dd171","name":"Entertainment","type":"expense","is_default":"true","user_id":null,"createdAt":"4/13/2024","updatedAt":"7/6/2024"},
+    {"id":"02fd8dc6-5c86-4c1d-9d45-5fefdc53e684","name":"Clothing","type":"expense","is_default":"true","user_id":null,"createdAt":"4/14/2024","updatedAt":"12/22/2023"},
+    {"id":"ff3269fc-4d47-473b-a7b0-52e89c3b79b0","name":"Transportation","type":"expense","is_default":"true","user_id":null,"createdAt":"12/6/2023","updatedAt":"6/5/2024"},
+    {"id":"3b2701c1-3127-41bf-9ed3-f4f301a328d5","name":"Healthcare","type":"expense","is_default":"true","user_id":null,"createdAt":"8/28/2024","updatedAt":"11/14/2024"},
+    {"id":"86b335a9-4c5c-4ad9-86cc-cdf0ff481b1a","name":"Dining Out","type":"expense","is_default":"true","user_id":null,"createdAt":"6/13/2024","updatedAt":"5/23/2024"},
+    {"id":"2397944d-5426-4272-869b-df111df579f5","name":"Education","type":"expense","is_default":"true","user_id":null,"createdAt":"12/31/2023","updatedAt":"9/1/2024"},
+    {"id":"1c32f3ea-8938-455b-9c5f-5ecd368a91b9","name":"Travel","type":"expense","is_default":"true","user_id":null,"createdAt":"10/18/2024","updatedAt":"7/19/2024"},
+    {"id":"521a8e56-3878-498a-aabb-9844cb602a86","name":"Credit Card Bills","type":"expense","is_default":"true","user_id":null,"createdAt":"7/17/2024","updatedAt":"5/7/2024"}
   ]
 }

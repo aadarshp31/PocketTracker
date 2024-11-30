@@ -8,11 +8,20 @@ export default class UserController {
     this.userService = userService;
   }
 
-  async getAllUsers(req: Request, res: Response) {
+  async getAll(req: Request, res: Response) {
     try {
       const users = await this.userService.getAllUsers();
+      const userList = users.map(user => (
+        {
+          id: user.get("id"),
+          first_name: user.get("first_name"),
+          last_name: user.get("last_name"),
+          email: user.get("email")
+        }
+      ));
+
       res.json({
-        users: users
+        users: userList
       });
     } catch (error: any) {
       res.status(400).json({
@@ -21,14 +30,14 @@ export default class UserController {
     }
   }
 
-  async getUser(req: Request, res: Response) {
+  async getOne(req: Request, res: Response) {
     try {
       // @ts-ignore
       if (!req.user) {
-        res.status(204);
+        res.status(204).send();
         return;
       }
-      
+
       const user = {
         // @ts-ignore
         first_name: req.user.first_name,
@@ -48,7 +57,7 @@ export default class UserController {
     }
   }
 
-  async getUserById(req: Request, res: Response, next: NextFunction, userId: string) {
+  async getById(req: Request, res: Response, next: NextFunction, userId: string) {
     try {
       const user = await this.userService.getUserById(userId);
       // @ts-ignore
@@ -61,20 +70,27 @@ export default class UserController {
     }
   }
 
-  async updateUserById(req: Request, res: Response) {
+  async updateById(req: Request, res: Response) {
     try {
       // @ts-ignore
       const user = req.user;
 
       if (!user) {
-        throw new Error(`No user found with the id ${req.params.id}`);
+        throw new Error(`No user found with the id ${req.params.userId}`);
       }
 
       const updatedUser = await this.userService.updateUserById(user.id, req.body);
 
       res.json({
         message: "user updated successfully",
-        users: [updatedUser]
+        users: [
+            {
+              id: updatedUser.get("id"),
+              first_name: updatedUser.get("first_name"),
+              last_name: updatedUser.get("last_name"),
+              email: updatedUser.get("email")
+            }
+        ]
       });
 
     } catch (error) {
@@ -90,7 +106,7 @@ export default class UserController {
       const user = req.user;
 
       if (!user) {
-        throw new Error(`No user found with the id ${req.params.id}`);
+        throw new Error(`No user found with the id ${req.params.userId}`);
       }
 
       await this.userService.deleteUserById(user.id);

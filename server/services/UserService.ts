@@ -57,7 +57,7 @@ export default class UserService {
   }
   
   async createBulk(users: User[]) {
-    const records = users.map((user) => ({first_name: user.first_name, last_name: user.last_name, email: user.email}));
+    const records = users.map((user) => ({id: user.id, first_name: user.first_name, last_name: user.last_name, email: user.email, createdAt: user.createdAt, updatedAt: user.updatedAt}));
     const createdRecords= await UserModel.bulkCreate(records);
     return createdRecords;
   }

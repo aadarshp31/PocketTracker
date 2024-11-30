@@ -2,7 +2,7 @@ import { DataTypes } from "sequelize";
 import { sequelize } from "../config/dbConnection";
 
 
-const Category = sequelize.define('category', {
+const CategoryModel = sequelize.define('category', {
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
@@ -10,17 +10,25 @@ const Category = sequelize.define('category', {
   },
   name: {
     type: DataTypes.STRING(100),
-    allowNull: false,
-    unique: true
+    allowNull: false
   },
   type: {
     type: DataTypes.ENUM("income", "expense"),
     allowNull: false
   },
   user_id: {
-    type: DataTypes.UUIDV4,
-    references: "user",
-    onDelete: "CASCADE"
+    type: DataTypes.UUID,
+    references: {
+      model: "users",
+      key: "id"
+    },
+    onDelete: "CASCADE",
+    defaultValue: null,
+    allowNull: true
+  },
+  is_default: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 }, {
   timestamps: true,
@@ -28,4 +36,4 @@ const Category = sequelize.define('category', {
   paranoid: true
 })
 
-export default Category;
+export default CategoryModel;

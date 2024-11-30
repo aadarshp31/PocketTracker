@@ -2,14 +2,15 @@ require('dotenv').config();
 import express, { Request, Response } from 'express'
 import { connectToRelationalDatabase } from './config/dbConnection';
 import userRoute from './routes/userRoute';
-import { seeder } from './seeder/seeder';
+import { allSeeder } from './seeder/seeder';
+import categoryRoute from './routes/categoryRoute';
 const app = express();
 
 app.use(express.static('public'));
 app.use(express.json());
 
 connectToRelationalDatabase().then(async () => {
-  await seeder();
+  await allSeeder();
 });
 
 app.get('/api/', async (req: Request, res: Response) => {
@@ -19,6 +20,7 @@ app.get('/api/', async (req: Request, res: Response) => {
 });
 
 app.use('/api/users', userRoute);
+app.use('/api/categories', categoryRoute);
 
 app.listen(process.env.PORT, async () => {
   console.info(`server is running at port: ${process.env.PORT}`);
