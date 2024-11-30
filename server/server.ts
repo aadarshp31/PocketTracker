@@ -4,24 +4,42 @@ import { connectToRelationalDatabase } from './config/dbConnection';
 import userRoute from './routes/userRoute';
 import { allSeeder } from './seeder/seeder';
 import categoryRoute from './routes/categoryRoute';
+import morgan from 'morgan';
+import fs from 'fs';
+import path from 'path';
 const app = express();
 
+// log file stream setup
+const accessLogWriteStream = fs.createWriteStream(path.join(__dirname, "..", "logs", "access.log"), { flags: "a" });
+
+// logger middleware setup
+app.use(morgan((process.env.MORGAN_ENV as string), {
+  stream: accessLogWriteStream
+}));
+
+app.use(morgan((process.env.MORGAN_ENV as string)));
+
+// middlewares setup
 app.use(express.static('public'));
 app.use(express.json());
 
+// db connection
 connectToRelationalDatabase().then(async () => {
   await allSeeder();
 });
 
+// base endpoint to check status
 app.get('/api/', async (req: Request, res: Response) => {
   res.json({
     message: "api is live"
   });
 });
 
+// actual endpoints
 app.use('/api/users', userRoute);
 app.use('/api/categories', categoryRoute);
 
+// server init
 app.listen(process.env.PORT, async () => {
   console.info(`server is running at port: ${process.env.PORT}`);
 });
