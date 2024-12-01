@@ -82,7 +82,7 @@ export default class CategoryService {
     }
 
     if (category.isSoftDeleted()) {
-      throw new Error(`User has already been deleted on date ${category.get("deletedAt")}`);
+      throw new Error(`Category has already been deleted on date ${category.get("deletedAt")}`);
     }
 
     await category.destroy();

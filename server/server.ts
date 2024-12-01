@@ -7,15 +7,18 @@ import categoryRoute from './routes/categoryRoute';
 import morgan from 'morgan';
 import fs from 'fs';
 import path from 'path';
+import transactionRoute from './routes/transactionRoute';
 const app = express();
 
 // log file stream setup
 const accessLogWriteStream = fs.createWriteStream(path.join(__dirname, "..", "logs", "access.log"), { flags: "a" });
 
 // logger middleware setup
-app.use(morgan((process.env.MORGAN_ENV as string), {
+if(process.env.NODE_ENV === "development") {
+  app.use(morgan((process.env.MORGAN_ENV as string), {
   stream: accessLogWriteStream
 }));
+}
 
 app.use(morgan((process.env.MORGAN_ENV as string)));
 
@@ -35,9 +38,10 @@ app.get('/api/', async (req: Request, res: Response) => {
   });
 });
 
-// actual endpoints
+// data endpoints
 app.use('/api/users', userRoute);
 app.use('/api/categories', categoryRoute);
+app.use('/api/transactions', transactionRoute);
 
 // server init
 app.listen(process.env.PORT, async () => {
