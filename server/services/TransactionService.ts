@@ -1,4 +1,4 @@
-import { FindOptions, Op } from "sequelize";
+import { DataType, FindOptions, Op, Order } from "sequelize";
 import TransactionModel from "../models/TransactionModel";
 import Transaction from "../interfaces/Transaction";
 
@@ -6,7 +6,7 @@ export default class TransactionService {
 
   constructor() { }
 
-  async getAllTransactions(userId: string, options: { page?: number, limit?: number } = { page: 1, limit: 10 }) {
+  async getAllTransactions(userId: string, options: { page?: number, limit?: number, order?: Order } = { page: 1, limit: 10, order: [["date", "desc"]] }) {
     const count = await TransactionModel.count({
       where: {
         user_id: userId
@@ -15,6 +15,7 @@ export default class TransactionService {
 
     options.page = options.page ? options.page : 1;
     options.limit = options.limit ? options.limit : 10;
+    options.order = options.order ? options.order : [["date", "desc"]];
 
     const totalPages = Math.ceil(count / options.limit);
     const offset = (options.page - 1) * options.limit;
@@ -22,6 +23,7 @@ export default class TransactionService {
     const transactions = await TransactionModel.findAll({
       limit: options.limit,
       offset: offset,
+      order: options.order,
       where: {
         "user_id": userId
       }

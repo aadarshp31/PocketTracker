@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import TransactionService from "../services/TransactionService";
 import UserService from "../services/UserService";
+import { Order } from "sequelize";
 
 export default class TransactionController {
   private transactionService: TransactionService;
@@ -35,10 +36,13 @@ export default class TransactionController {
       // @ts-ignore
       req.user = user;
 
-      const options = {
-        limit: req.query.limit ? parseInt((req.query.limit as string)) : 10,
-        page: req.query.page ? parseInt((req.query.page as string)) : 1
-      };
+      
+      const options: {limit?: number, page?: number, order?: Order} = {};
+      
+      
+      if(req.query.limit) options.limit = parseInt((req.query.limit as string));
+      if(req.query.page) options.page = parseInt((req.query.page as string));
+      if (req.query.sort) options.order = [[req.query.sort as string, req.query.order ? req.query.order as string : "desc"]]
 
       const result = await this.transactionService.getAllTransactions((userId as string), options);
 
