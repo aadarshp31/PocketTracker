@@ -16,6 +16,7 @@
     "morgan": "^1.10.0",
     "pg": "^8.13.1",
     "pg-hstore": "^2.3.4",
+    "ts-node": "^10.9.2",
     "sequelize": "^6.37.5"
   },
   "devDependencies": {
@@ -23,7 +24,6 @@
     "@types/express": "^5.0.0",
     "@types/morgan": "^1.9.9",
     "@types/node": "^22.8.0",
-    "ts-node": "^10.9.2",
     "typescript": "^5.6.3"
   }
 }
