@@ -10,11 +10,11 @@ import path from 'path';
 import transactionRoute from './routes/transactionRoute';
 const app = express();
 
-// log file stream setup
-const accessLogWriteStream = fs.createWriteStream(path.join(__dirname, "..", "logs", "access.log"), { flags: "a" });
 
 // logger middleware setup
 if(process.env.NODE_ENV === "development") {
+  // log file stream setup
+  const accessLogWriteStream = fs.createWriteStream(path.join(__dirname, "..", "logs", "access.log"), { flags: "a" });
   app.use(morgan((process.env.MORGAN_ENV as string), {
   stream: accessLogWriteStream
 }));
