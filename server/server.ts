@@ -8,8 +8,14 @@ import morgan from 'morgan';
 import fs from 'fs';
 import path from 'path';
 import transactionRoute from './routes/transactionRoute';
+import cors from 'cors'
 const app = express();
 
+// allow cors
+app.use(cors({
+  origin: "*",
+  allowedHeaders: "*"
+}))
 
 // logger middleware setup
 if(process.env.NODE_ENV === "development") {
