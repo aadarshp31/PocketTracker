@@ -1,3 +1,4 @@
+import { Order } from "sequelize";
 import UserService from "../services/UserService";
 import { NextFunction, Request, Response } from "express";
 
@@ -10,18 +11,30 @@ export default class UserController {
 
   async getAll(req: Request, res: Response) {
     try {
-      const users = await this.userService.getAllUsers();
-      const userList = users.map(user => (
-        {
-          id: user.get("id"),
-          first_name: user.get("first_name"),
-          last_name: user.get("last_name"),
-          email: user.get("email")
-        }
-      ));
+
+      const options: {limit?: number, page?: number, order?: Order} = {};
+      
+      if(req.query.limit) options.limit = parseInt((req.query.limit as string));
+      if(req.query.page) options.page = parseInt((req.query.page as string));
+      if (req.query.sort) options.order = [[req.query.sort as string, req.query.order ? req.query.order as string : "asc"]]
+
+      const result = await this.userService.getAllUsers(options);
+
+      if (!result.users || result.users.length === 0) {
+        res.status(204).send();
+        return;
+      }
+
+      const usersList = result.users.map(user => ({
+        id: user.get("id"),
+        first_name: user.get("first_name"),
+        last_name: user.get("last_name"),
+        email: user.get("email")
+      }));
 
       res.json({
-        users: userList
+        users: usersList,
+        meta: result.meta
       });
     } catch (error: any) {
       res.status(400).json({

@@ -1,12 +1,35 @@
 import UserModel from "../models/UserModel";
 import User from "../interfaces/User";
+import { Order } from "sequelize";
 
 export default class UserService {
 
   constructor() { }
 
-  async getAllUsers(limit = 100) {
-    return await UserModel.findAll({ limit });
+  async getAllUsers(options: { page?: number, limit?: number, order?: Order  } = { page: 1, limit: 10 }) {
+    const count = await UserModel.count({
+      where: {
+        deletedAt: null
+      }
+    });
+
+    options.page = options.page ? options.page : 1;
+    options.limit = options.limit ? options.limit : 10;
+
+    const totalPages = Math.ceil(count / options.limit);
+    const offset = (options.page - 1) * options.limit;
+
+    const users =  await UserModel.findAll({...options, offset: offset, where: { deletedAt: null }});
+
+    return {
+      users,
+      meta: {
+        page: options.page,
+        limit: options.limit,
+        totalPages: totalPages,
+        totalCount: count
+      }
+    };
   }
 
   async getUserById(userId: string) {
