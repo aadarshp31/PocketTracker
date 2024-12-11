@@ -1,4 +1,4 @@
-import { DataType, FindOptions, Op, Order } from "sequelize";
+import { Op, Order } from "sequelize";
 import BudgetModel from "../models/BudgetModel";
 import Budget from "../interfaces/Budget";
 

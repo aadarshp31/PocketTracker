@@ -1,4 +1,4 @@
-import { DataTypes, DATE } from "sequelize";
+import { DataTypes } from "sequelize";
 import { sequelize } from "../config/dbConnection";
 
 const BudgetModel = sequelize.define('budget', {

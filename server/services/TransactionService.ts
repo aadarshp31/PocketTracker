@@ -1,4 +1,4 @@
-import { DataType, FindOptions, Op, Order } from "sequelize";
+import { Op, Order } from "sequelize";
 import TransactionModel from "../models/TransactionModel";
 import Transaction from "../interfaces/Transaction";
 

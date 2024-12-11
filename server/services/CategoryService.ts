@@ -1,5 +1,5 @@
 import CategoryModel from "../models/CategoryModel";
-import { FindOptions, Op, where } from "sequelize";
+import { FindOptions, Op } from "sequelize";
 import Category from "../interfaces/Category";
 
 export default class CategoryService {
