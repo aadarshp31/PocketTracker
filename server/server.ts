@@ -10,6 +10,7 @@ import path from 'path';
 import transactionRoute from './routes/transactionRoute';
 import cors from 'cors'
 import Middlewares from './middlewares/Middlewares';
+import budgetRoute from './routes/budgetRoute';
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.get('/api/', async (req: Request, res: Response) => {
 app.use('/api/users', userRoute);
 app.use('/api/categories', categoryRoute);
 app.use('/api/transactions', transactionRoute);
+app.use('/api/budgets', budgetRoute);
 
 // middlewares for api error handling
 app.use(Middlewares.notFound);

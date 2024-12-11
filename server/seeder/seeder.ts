@@ -5,11 +5,14 @@ import CategoryModel from "../models/CategoryModel";
 import CategoryService from "../services/CategoryService";
 import TransactionService from "../services/TransactionService";
 import TransactionModel from "../models/TransactionModel";
+import BudgetModel from "../models/BudgetModel";
+import BudgetService from "../services/BudgetService";
 
 export async function allSeeder() {
   await seedUsers();
   await seedCategories();
   await seedTransactions();
+  await seedBudgets();
 }
 
 export async function seedUsers() {
@@ -56,5 +59,21 @@ export async function seedTransactions() {
     console.log("<-------- dummy transactions created successfully -------->");
   } catch (error) {
     console.info('<-------- seeder failed for transactions --------> : ', error);
+  }
+}
+
+export async function seedBudgets() {
+  try {
+    const singleBudget = await BudgetModel.findOne();
+
+    if (singleBudget) {
+      return;
+    }
+
+    // @ts-ignore
+    await new BudgetService().createBulk(dummyDataJson.budgets)
+    console.log("<-------- dummy budgets created successfully -------->");
+  } catch (error) {
+    console.info('<-------- seeder failed for budgets --------> : ', error);
   }
 }
