@@ -81,6 +81,11 @@ export default class AuthController {
 
     async verify(req: Request, res: Response) {
         try {
+            // params recieved from supabase
+            const signupVerificationParams = req.params;
+
+            // do something with the params
+
             res.json({
                 message: "user verification success. please signin to continue."
             });
