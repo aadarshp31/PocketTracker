@@ -214,8 +214,16 @@ export default class BudgetController {
   async create(req: Request, res: Response) {
     try {
       const budgetDetails = req.body;
+      const userId = req.query.userId;
 
-      const user = await this.userService.getUserById(budgetDetails.user_id);
+      if (!userId) {
+        res.status(400).json({
+          message: 'user id is required'
+        });
+        return;
+      }
+
+      const user = await this.userService.getUserById(userId as string);
 
       if (!user) {
         res.status(400).send({
@@ -226,7 +234,7 @@ export default class BudgetController {
 
       const result = await this.budgetService.createBudget({
         amount: budgetDetails.amount,
-        user_id: budgetDetails.user_id,
+        user_id: userId as string,
         category_id: budgetDetails.category_id,
         start_date: budgetDetails.start_date,
         end_date: budgetDetails.end_date

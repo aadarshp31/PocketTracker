@@ -218,8 +218,16 @@ export default class TransactionController {
   async create(req: Request, res: Response) {
     try {
       const transactionDetails = req.body;
+      const userId = req.query.userId;
 
-      const user = await this.userService.getUserById(transactionDetails.user_id);
+      if (!userId) {
+        res.status(400).json({
+          message: 'user id is required'
+        });
+        return;
+      }
+
+      const user = await this.userService.getUserById(userId as string);
 
       if(!user){
         res.status(400).send({
@@ -232,7 +240,7 @@ export default class TransactionController {
         amount: transactionDetails.amount,
         type: transactionDetails.type,
         description: transactionDetails.description,
-        user_id: transactionDetails.user_id,
+        user_id: userId as string,
         category_id: transactionDetails.category_id,
         date: transactionDetails.date
       });

@@ -181,8 +181,16 @@ export default class CategoryController {
   async create(req: Request, res: Response) {
     try {
       const categoryDetails = req.body;
+      const userId = req.query.userId;
 
-      const user = await this.userService.getUserById(categoryDetails.user_id);
+      if (!userId) {
+        res.status(400).json({
+          message: 'user id is required'
+        });
+        return;
+      }
+
+      const user = await this.userService.getUserById(userId as string);
 
       if(!user){
         res.status(400).send({
@@ -194,7 +202,7 @@ export default class CategoryController {
       const createdCategory = await this.categoryService.createCategory({
         name: categoryDetails.name,
         type: categoryDetails.type,
-        user_id: categoryDetails.user_id,
+        user_id: userId as string,
         is_default: categoryDetails.is_default
       })
 
