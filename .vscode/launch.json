@@ -14,6 +14,7 @@
       "cwd": "${workspaceFolder}/server",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "start"],
+      "envFile": "${env:HOME}/adarsh-envs/PocketTracker/server/.env",
       "console": "integratedTerminal"
     }
   ]

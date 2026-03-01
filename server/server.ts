@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: process.env.ENV_FILE_PATH || '.env' });
 import express, { Request, Response } from 'express'
 import { connectToRelationalDatabase } from './config/dbConnection';
 import userRoute from './routes/userRoute';

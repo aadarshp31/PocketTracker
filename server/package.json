@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.ts",
   "scripts": {
-    "start": "ts-node server.ts",
+    "start": "ENV_FILE_PATH=\"${ENV_FILE_PATH:-$HOME/adarsh-envs/PocketTracker/server/.env}\" ts-node server.ts",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
