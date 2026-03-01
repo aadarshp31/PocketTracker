@@ -2,73 +2,83 @@
 
 Last updated: 2026-03-01
 
-## Goal
+## MVP Goal
 
-Track remaining work in small, shippable phases with clear completion criteria.
+Deliver a simple expense tracker that prioritizes transaction reliability and automatic insights over manual budgeting.
 
-## Phase 1 — Security & API Hardening
+## Completed Baseline
 
-### 1. Add authentication and ownership enforcement
-- [ ] Introduce auth flow (JWT or session-based)
-- [ ] Replace `userId` query trust with identity from auth context
-- [ ] Enforce ownership checks in all protected resources
+- [x] Transaction CRUD APIs
+- [x] Paginated transaction listing
+- [x] Core entities (users/categories/transactions/budgets)
+- [x] React client scaffold in workspace (`client/`, React 19 + TypeScript + Vite)
 
-**Done when**
-- [ ] Protected endpoints reject unauthenticated requests
-- [ ] A user cannot access/modify another user's categories, transactions, or budgets
+## Phase 1 — Security + Data Integrity
 
-### 2. Replace request `@ts-ignore` patterns
-- [ ] Add typed request augmentation for `req.user`, `req.category`, `req.transaction`, `req.budget`
-- [ ] Remove controller-level `@ts-ignore` usage for these fields
-
-**Done when**
-- [ ] TypeScript build passes without those `@ts-ignore` entries
-
-## Phase 2 — Quality & Reliability
-
-### 3. Add automated tests
-- [ ] Set up test framework for API/services
-- [ ] Cover CRUD happy-path and key failures
-- [ ] Add regression tests for category default restrictions
+### 1) Authentication and ownership
+- [ ] Integrate auth and resolve user identity server-side
+- [ ] Remove dependency on query `userId` for authorization
+- [ ] Enforce cross-user isolation in all protected endpoints
 
 **Done when**
-- [ ] `npm test` runs real tests
-- [ ] Critical routes have passing coverage for create/read/update/delete behavior
+- [ ] Every protected route requires authenticated identity
+- [ ] Access is restricted to the owner’s records only
 
-### 4. Improve API error contracts
-- [ ] Standardize error body shape
-- [ ] Differentiate validation errors vs not-found vs server errors
-
-**Done when**
-- [ ] Errors are predictable and documented per endpoint class
-
-## Phase 3 — Product Surface
-
-### 5. Frontend source management
-- [ ] Add/restore maintainable frontend source in repository (if intentionally separate, document location)
-- [ ] Keep build pipeline and deployment path documented
+### 2) Query/index readiness for analytics
+- [ ] Add indexes for transaction analytics workload:
+	- [ ] `transactions(user_id, date)`
+	- [ ] `transactions(user_id, category_id, date)`
 
 **Done when**
-- [ ] Frontend can be built from source by a new contributor
+- [ ] Transaction list and aggregate queries remain fast at scale
 
-### 6. Reporting and insights (optional enhancement)
-- [ ] Monthly spending summary endpoint
-- [ ] Category-wise budget utilization endpoint
+## Phase 2 — Insights APIs (Core Differentiator)
+
+### 3) Dashboard summary endpoints
+- [ ] Current month vs previous month spending
+- [ ] Highest spending category
+- [ ] Category percentage breakdown
+
+### 4) Behavioral + predictive endpoints
+- [ ] Day-of-week spending pattern
+- [ ] Spending spike detection
+- [ ] End-of-month projection
 
 **Done when**
-- [ ] Dashboard-level summary endpoints are available and documented
+- [ ] Dashboard can render all core insights from API responses only
 
-## Backlog (Lower Priority)
+## Phase 3 — Frontend Productization
 
-- [ ] Input validation schemas for all write endpoints
-- [ ] Rate limiting and abuse protection
-- [ ] API docs export (OpenAPI/Swagger)
-- [ ] CI checks (build + test)
+### 5) Transactions UX
+- [ ] Create/edit/delete transaction forms with validation
+- [ ] Paginated table with filters and sorting
+- [ ] Error/loading/empty states for all views
 
-## Update Protocol
+### 6) Insights dashboard UX
+- [ ] KPI summary cards
+- [ ] Category split visualization
+- [ ] Trend indicators and anomaly highlight
 
-For each completed item:
+**Done when**
+- [ ] User can track monthly spending and view actionable insights in one flow
 
-1. Mark checkbox as done.
-2. Add completion date in the section.
-3. If scope changed, add one bullet describing the change.
+## Phase 4 — Quality + Operability
+
+### 7) Testing and contracts
+- [ ] Add backend tests for transactions + insights
+- [ ] Add client tests for critical screens
+- [ ] Standardize API success/error response shape
+
+### 8) Documentation and CI
+- [ ] API docs (OpenAPI/Swagger) for MVP endpoints
+- [ ] CI for lint + build + test
+
+**Done when**
+- [ ] `build`, `lint`, and `test` pass in CI on every change
+
+## Post-MVP (Optional)
+
+- Lightweight budgeting tools
+- Recurring/subscription detection
+- Notifications and savings goals
+- AI recommendations

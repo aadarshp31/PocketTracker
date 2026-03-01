@@ -2,48 +2,72 @@
 
 Last updated: 2026-03-01
 
-## Progress Summary
+## Status Against Earlier Plan
 
-- **Core backend API**: Implemented
-- **Entity CRUD (Users, Categories, Transactions, Budgets)**: Implemented
-- **Pagination/Sorting for list endpoints**: Implemented (Users, Transactions, Budgets)
-- **Database seed bootstrap**: Implemented
-- **Frontend source in repository**: Not present (only built static assets in `server/public`)
-- **Authentication/Authorization layer**: Not implemented
-- **Automated tests**: Not implemented (`npm test` is placeholder)
+| Plan Area | Current Status | Notes |
+|---|---|---|
+| Transaction CRUD | ✅ Implemented | Create/list/get/update/delete endpoints are present |
+| Pagination meta on transactions | ✅ Implemented | Includes page/limit/totalPages/totalCount |
+| Insights-driven direction | 🟡 Partially aligned | Direction defined, but insights endpoints not implemented yet |
+| Budget as non-MVP | 🟡 Decision made, implementation still exists | Budget module is active in API and can be retained as optional |
+| Indexed transaction queries | ❌ Pending | No explicit indexes yet for `user_id` + `date` |
+| Aggregation endpoints (monthly/category) | ❌ Pending | Core requirement for insights-first MVP |
+| Auth via Supabase Auth | ❌ Pending | Backend currently trusts query `userId` |
+| Frontend code in workspace | ✅ Implemented | React 19 + Vite client scaffolded and structured |
 
-## Feature Status (Trackable)
+## Implemented (Keep)
 
-| Area | Feature | Status | Notes |
-|---|---|---|---|
-| API | Health endpoint (`GET /api/`) | ✅ Done | Returns `api is live` |
-| API | Users endpoints (`/api/users`) | ✅ Done | CRUD implemented |
-| API | Categories endpoints (`/api/categories`) | ✅ Done | CRUD implemented |
-| API | Transactions endpoints (`/api/transactions`) | ✅ Done | CRUD implemented |
-| API | Budgets endpoints (`/api/budgets`) | ✅ Done | CRUD implemented |
-| Data access | User ownership scoping via `userId` query | ✅ Done | Used for category/transaction/budget access |
-| Data access | Category defaults visibility | ✅ Done | Default + user categories returned |
-| Business rules | Restrict edits/deletes on default categories | ✅ Done | Guarded in service layer |
-| List behavior | Pagination + metadata | ✅ Done | Users, Transactions, Budgets |
-| List behavior | Sorting controls (`sort` + `order`) | ✅ Done | Users, Transactions, Budgets |
-| Bootstrapping | Auto seeding on startup | ✅ Done | Seeds users/categories/transactions/budgets if empty |
-| Platform | CORS + request logging + error middleware | ✅ Done | Morgan + custom middleware |
-| Platform | Static file hosting | ✅ Done | Serves `server/public` |
-| Security | AuthN/AuthZ (token/session) | ❌ Pending | Ownership currently depends on `userId` query parameter |
-| Quality | Automated test suite | ❌ Pending | No real tests currently configured |
-| Quality | Request typing cleanup | ❌ Pending | `@ts-ignore` used for request-extended properties |
-| Frontend | Maintainable frontend source in repo | ❌ Pending | Source files are not visible in current workspace |
+- Core Express API server and health endpoint
+- Users, categories, transactions, budgets CRUD routes
+- Pagination + sorting in list APIs (users, transactions, budgets)
+- Category default protections (cannot update/delete default categories)
+- Seeder bootstrap for initial data
+- Logging, CORS, static hosting, error middleware
+- Client app now maintained in workspace (`client/`) with:
+	- React 19 + TypeScript + Vite
+	- React Router
+	- React Query
+	- Axios API client layer
+	- Feature-oriented transaction module structure
 
-## Current Known Constraints
+## Pending for Current MVP Direction
 
-- API access control is application-level and depends on incoming `userId` query values.
-- Some response behavior uses `204` for empty reads.
-- Several controllers store derived entities on `req` with `@ts-ignore` instead of typed Express request augmentation.
+### Backend (High Priority)
 
-## How to Update This File
+- [ ] Add auth integration and ownership enforcement from authenticated identity
+- [ ] Add explicit DB indexes for transaction analytics access patterns (`user_id`, `date`, category)
+- [ ] Add summary endpoints for dashboard:
+	- [ ] monthly spend vs previous month
+	- [ ] category breakdown + top category
+	- [ ] trend endpoint (month-over-month category growth)
+- [ ] Add standardized response contract (`data` + `meta` + consistent error shape)
 
-When a feature changes:
+### Insights Layer (High Priority)
 
-1. Update the matching row in **Feature Status (Trackable)**.
-2. Change the **Progress Summary** bullet if overall status changed.
-3. Bump the `Last updated` date.
+- [ ] Implement SQL aggregation services for:
+	- [ ] monthly totals
+	- [ ] category percentage split
+	- [ ] day-of-week spending distribution
+	- [ ] spending spike detection
+- [ ] Add API endpoints for computed insights (no separate insights table yet)
+
+### Frontend (High Priority)
+
+- [ ] Connect dashboard page to new insights endpoints
+- [ ] Add transactions create/edit forms and validation
+- [ ] Replace temporary default user mechanism with authenticated user context
+- [ ] Add loading/error/empty UI states for all data views
+
+### Quality / Reliability
+
+- [ ] Add automated test suite (`npm test` currently placeholder)
+- [ ] Remove `@ts-ignore` request property patterns using typed request augmentation
+- [ ] Add API contract documentation
+
+## De-scoped / Optional (Post-MVP)
+
+- Optional lightweight budgeting workflows
+- Recurring transaction detection and subscription patterns
+- Notifications and savings goals
+- AI-generated recommendation layer
+

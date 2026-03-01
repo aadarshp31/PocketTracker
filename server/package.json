@@ -5,7 +5,14 @@
   "main": "server.ts",
   "scripts": {
     "start": "ENV_FILE_PATH=\"${ENV_FILE_PATH:-$HOME/adarsh-envs/PocketTracker/server/.env}\" ts-node server.ts",
+    "start:prod": "ENV_FILE_PATH=\"${ENV_FILE_PATH:-$HOME/adarsh-envs/PocketTracker/server/.env}\" node dist/server.js",
+    "dev:server": "npm run start",
+    "dev:client": "npm --prefix ../client run dev --",
+    "dev:full": "concurrently -k -n server,client -c green,blue \"npm run dev:server\" \"npm run dev:client\"",
+    "clean": "rm -rf dist",
     "build": "tsc",
+    "build:client": "npm --prefix ../client run build:server-public",
+    "build:prod": "npm run build && npm run build:client",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "aadarshp31",
@@ -28,6 +35,7 @@
     "@types/dotenv": "^6.1.1",
     "@types/express": "^5.0.0",
     "@types/morgan": "^1.9.9",
-    "@types/node": "^22.8.0"
+    "@types/node": "^22.8.0",
+    "concurrently": "^9.2.1"
   }
 }

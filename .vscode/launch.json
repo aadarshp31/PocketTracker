@@ -7,14 +7,39 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Start Full Stack",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "cwd": "${workspaceFolder}/server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:full"],
+      "envFile": "${env:HOME}/adarsh-envs/PocketTracker/server/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Start Server",
       "skipFiles": [
         "<node_internals>/**"
       ],
       "cwd": "${workspaceFolder}/server",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start"],
+      "runtimeArgs": ["run", "dev:server"],
       "envFile": "${env:HOME}/adarsh-envs/PocketTracker/server/.env",
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Start Client",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "cwd": "${workspaceFolder}/server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:client"],
       "console": "integratedTerminal"
     }
   ]
