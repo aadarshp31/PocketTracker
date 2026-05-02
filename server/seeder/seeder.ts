@@ -8,6 +8,8 @@ import TransactionModel from "../models/TransactionModel";
 import BudgetModel from "../models/BudgetModel";
 import BudgetService from "../services/BudgetService";
 
+const TEST_SUPABASE_UID = "381c3a3b-7e8f-45cd-af23-98b7a1fe8727";
+
 export async function allSeeder() {
   await seedUsers();
   await seedCategories();
@@ -23,7 +25,11 @@ export async function seedUsers() {
       return;
     }
 
-    await new UserService().createBulk(dummyDataJson.users)
+    const usersWithTestUid = dummyDataJson.users.map((user, index) => (
+      index === 0 ? { ...user, supabase_id: TEST_SUPABASE_UID } : user
+    ));
+
+    await new UserService().createBulk(usersWithTestUid)
     console.log("<-------- dummy users created successfully -------->");
   } catch (error) {
     console.info('<-------- seeder failed for users --------> : ', error);

@@ -1,28 +1,14 @@
 import { useState } from 'react'
 import { useTransactions } from '../features/transactions/hooks/useTransactions'
 
-const DEFAULT_USER_ID = import.meta.env.VITE_DEFAULT_USER_ID ?? ''
-
 export function TransactionsPage() {
   const [page, setPage] = useState(1)
   const limit = 10
 
   const query = useTransactions({
-    userId: DEFAULT_USER_ID,
     page,
     limit,
   })
-
-  if (!DEFAULT_USER_ID) {
-    return (
-      <section>
-        <h1>Transactions</h1>
-        <p className="muted">
-          Set <code>VITE_DEFAULT_USER_ID</code> in client env to load transactions.
-        </p>
-      </section>
-    )
-  }
 
   if (query.isLoading) {
     return (

@@ -42,7 +42,17 @@ const TransactionModel = sequelize.define('transaction', {
     allowNull: false
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['user_id', 'date'],
+      name: 'idx_transactions_user_date'
+    },
+    {
+      fields: ['user_id', 'category_id', 'date'],
+      name: 'idx_transactions_user_category_date'
+    }
+  ]
 });
 
 export default TransactionModel;

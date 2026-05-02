@@ -48,14 +48,14 @@ app.get('/api/', async (req: Request, res: Response) => {
   });
 });
 
-// data endpoints
-app.use('/api/users', userRoute);
-app.use('/api/categories', categoryRoute);
-app.use('/api/transactions', transactionRoute);
-app.use('/api/budgets', budgetRoute);
-
-// auth endpoints
+// auth endpoints (no authentication required)
 app.use('/api/auth', authRoute);
+
+// Protected routes - apply JWT verification middleware
+app.use('/api/users', Middlewares.verifyAuth, userRoute);
+app.use('/api/categories', Middlewares.verifyAuth, categoryRoute);
+app.use('/api/transactions', Middlewares.verifyAuth, transactionRoute);
+app.use('/api/budgets', Middlewares.verifyAuth, budgetRoute);
 
 // middlewares for api error handling
 app.use(Middlewares.notFound);

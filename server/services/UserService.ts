@@ -46,6 +46,7 @@ export default class UserService {
 
   async createUser(userDetails: User) {
     return await UserModel.create({
+      supabase_id: userDetails.supabase_id,
       first_name: userDetails.first_name,
       last_name: userDetails.last_name,
       email: userDetails.email
@@ -80,7 +81,15 @@ export default class UserService {
   }
   
   async createBulk(users: User[]) {
-    const records = users.map((user) => ({id: user.id, first_name: user.first_name, last_name: user.last_name, email: user.email, createdAt: user.createdAt, updatedAt: user.updatedAt}));
+    const records = users.map((user) => ({
+      id: user.id,
+      supabase_id: user.supabase_id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    }));
     const createdRecords= await UserModel.bulkCreate(records);
     return createdRecords;
   }

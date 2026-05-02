@@ -1,53 +1,57 @@
 import { NextFunction, Request, Response } from "express";
 import TransactionService from "../services/TransactionService";
 import UserService from "../services/UserService";
+import AuthService from "../services/AuthService";
 import { Order } from "sequelize";
 
 export default class TransactionController {
   private transactionService: TransactionService;
   private userService: UserService;
+  private authService: AuthService;
 
   constructor(transactionService: TransactionService, userService: UserService) {
     this.transactionService = transactionService;
     this.userService = userService;
+    this.authService = new AuthService();
+  }
+
+  private async getUserIdFromSupabaseId(supabaseId: string): Promise<string | null> {
+    const user = await this.authService.getUserBySuperbaseId(supabaseId);
+    return user ? (user.get("id") as string) : null;
   }
 
   async getAll(req: Request, res: Response) {
     try {
-      const userId = req.query.userId;
+      // Get user ID from authenticated user (middleware sets req.user)
+      if (!req.user?.id) {
+        res.status(401).json({
+          message: 'User not authenticated'
+        });
+        return;
+      }
 
+      const userId = await this.getUserIdFromSupabaseId(req.user.id);
+      
       if (!userId) {
-        res.status(400).json({
-          message: 'user id is required for getting transactions'
+        res.status(404).json({
+          message: 'User profile not found in database'
         });
         return;
       }
 
-
-      const user = await this.userService.getUserById((req.query.userId as string));
-
-      if(!user){
-        res.status(400).send({
-          message: 'invalid userId'
-        });
-        return;
-      }
-      
-      // @ts-ignore
-      req.user = user;
-
-      
       const options: {limit?: number, page?: number, order?: Order} = {};
-      
       
       if(req.query.limit) options.limit = parseInt((req.query.limit as string));
       if(req.query.page) options.page = parseInt((req.query.page as string));
       if (req.query.sort) options.order = [[req.query.sort as string, req.query.order ? req.query.order as string : "desc"]]
 
-      const result = await this.transactionService.getAllTransactions((userId as string), options);
+      const result = await this.transactionService.getAllTransactions(userId, options);
 
       if (!result.transactions || result.transactions.length === 0) {
-        res.status(204).send();
+        res.status(200).json({
+          transactions: [],
+          meta: result.meta
+        });
         return;
       }
 
@@ -70,7 +74,8 @@ export default class TransactionController {
       
     } catch (error: any) {
       res.status(400).json({
-        message: "something went wrong"
+        message: "something went wrong",
+        error: error.message
       });
     }
   }
@@ -116,20 +121,28 @@ export default class TransactionController {
 
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
-      if (!req.query.userId) {
-        res.status(400).json({
-          message: 'user id is required for getting transactions'
+      if (!req.user?.id) {
+        res.status(401).json({
+          message: 'User not authenticated'
         });
         return;
       }
 
-      const user = await this.userService.getUserById((req.query.userId as string));
-      const result = await this.transactionService.getTransactionById(req.params.transactionId, (req.query.userId as string));
+      const userId = await this.getUserIdFromSupabaseId(req.user.id);
       
-      // @ts-ignore
-      if(user) req.user = user;
-      // @ts-ignore
-      if(result.transaction) req.transaction = result.transaction;
+      if (!userId) {
+        res.status(404).json({
+          message: 'User profile not found in database'
+        });
+        return;
+      }
+
+      const result = await this.transactionService.getTransactionById(req.params.transactionId, userId);
+      
+      if(result.transactions) {
+        // @ts-ignore
+        req.transaction = result.transactions;
+      }
       next();
     } catch (error: any) {
       res.status(400).json({
@@ -140,9 +153,9 @@ export default class TransactionController {
 
   async updateById(req: Request, res: Response) {
     try {
-      if (!req.query.userId) {
-        res.status(400).json({
-          message: 'user id is required for getting transactions'
+      if (!req.user?.id) {
+        res.status(401).json({
+          message: 'User not authenticated'
         });
         return;
       }
@@ -154,7 +167,16 @@ export default class TransactionController {
         throw new Error(`No transaction found with the id ${req.params.transactionId}`);
       }
 
-      const result = await this.transactionService.updateTransactionById(transaction.id, req.body, (req.query.userId as string));
+      const userId = await this.getUserIdFromSupabaseId(req.user.id);
+      
+      if (!userId) {
+        res.status(404).json({
+          message: 'User profile not found in database'
+        });
+        return;
+      }
+
+      const result = await this.transactionService.updateTransactionById(transaction.id, req.body, userId);
 
       if(!result.transactions){
         res.status(400).json({
@@ -189,9 +211,9 @@ export default class TransactionController {
 
   async deleteById(req: Request, res: Response) {
     try {
-      if (!req.query.userId) {
-        res.status(400).json({
-          message: 'user id is required for getting transactions'
+      if (!req.user?.id) {
+        res.status(401).json({
+          message: 'User not authenticated'
         });
         return;
       }
@@ -203,7 +225,16 @@ export default class TransactionController {
         throw new Error(`No transaction found with the id ${req.params.transactionId}`);
       }
 
-      await this.transactionService.deleteTransactionById(transaction.id, (req.query.userId as string));
+      const userId = await this.getUserIdFromSupabaseId(req.user.id);
+      
+      if (!userId) {
+        res.status(404).json({
+          message: 'User profile not found in database'
+        });
+        return;
+      }
+
+      await this.transactionService.deleteTransactionById(transaction.id, userId);
 
       res.json({
         message: "transaction deleted successfully",
@@ -217,30 +248,29 @@ export default class TransactionController {
 
   async create(req: Request, res: Response) {
     try {
-      const transactionDetails = req.body;
-      const userId = req.query.userId;
+      if (!req.user?.id) {
+        res.status(401).json({
+          message: 'User not authenticated'
+        });
+        return;
+      }
 
+      const userId = await this.getUserIdFromSupabaseId(req.user.id);
+      
       if (!userId) {
-        res.status(400).json({
-          message: 'user id is required'
+        res.status(404).json({
+          message: 'User profile not found in database'
         });
         return;
       }
 
-      const user = await this.userService.getUserById(userId as string);
-
-      if(!user){
-        res.status(400).send({
-          message: 'invalid userId'
-        });
-        return;
-      }
+      const transactionDetails = req.body;
 
       const result = await this.transactionService.createTransaction({
         amount: transactionDetails.amount,
         type: transactionDetails.type,
         description: transactionDetails.description,
-        user_id: userId as string,
+        user_id: userId,
         category_id: transactionDetails.category_id,
         date: transactionDetails.date
       });
@@ -248,23 +278,11 @@ export default class TransactionController {
       res.status(201).json({
         transactions: result.transactions
       });
+
     } catch (error: any) {
       res.status(400).json({
-        message: "something went wrong"
-      })
-    }
-  }
-
-  async createBulk(req: Request, res: Response) {
-    try {
-      await this.transactionService.createBulk(req.body);
-
-      res.json({
-        message: "bulk transactions created successfully",
-      });
-    } catch (error) {
-      res.status(400).json({
-        message: "something went wrong"
+        message: "something went wrong",
+        error: error.message
       });
     }
   }
