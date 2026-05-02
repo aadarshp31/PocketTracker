@@ -4,6 +4,7 @@ import { useAuth } from '../../features/auth/contexts/AuthContext'
 const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/transactions', label: 'Transactions' },
+  { to: '/settings', label: 'Settings' },
 ]
 
 export function AppShell() {

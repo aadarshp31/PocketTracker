@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AppShell } from './shell/AppShell'
 import { DashboardPage } from '../pages/DashboardPage'
+import { SettingsPage } from '../pages/SettingsPage'
 import { TransactionsPage } from '../pages/TransactionsPage'
 import { LoginPage } from '../features/auth/pages/LoginPage'
 import { SignupPage } from '../features/auth/pages/SignupPage'
@@ -25,6 +26,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: 'dashboard', element: <DashboardPage /> },
+      { path: 'settings', element: <SettingsPage /> },
       { path: 'transactions', element: <TransactionsPage /> },
     ],
   },

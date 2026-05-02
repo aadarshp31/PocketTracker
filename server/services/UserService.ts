@@ -49,7 +49,8 @@ export default class UserService {
       supabase_id: userDetails.supabase_id,
       first_name: userDetails.first_name,
       last_name: userDetails.last_name,
-      email: userDetails.email
+      email: userDetails.email,
+      currency: userDetails.currency ?? "INR"
     })
   }
 
@@ -63,6 +64,7 @@ export default class UserService {
     if (userDetails.first_name) user.set("first_name", userDetails.first_name);
     if (userDetails.last_name) user.set("last_name", userDetails.last_name);
     if (userDetails.email) user.set("email", userDetails.email);
+    if (userDetails.currency) user.set("currency", userDetails.currency.toUpperCase());
     return await user.save();
   }
 
@@ -87,6 +89,7 @@ export default class UserService {
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
+      currency: user.currency ?? "INR",
       createdAt: user.createdAt,
       updatedAt: user.updatedAt
     }));

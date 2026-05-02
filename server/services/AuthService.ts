@@ -33,7 +33,8 @@ export default class AuthService {
                     supabase_id: data.user.id,
                     email: userDetails.email,
                     first_name: userDetails.first_name,
-                    last_name: userDetails.last_name
+                    last_name: userDetails.last_name,
+                    currency: "INR"
                 });
 
                 return { data: { user: data.user, dbUser: dbUser.toJSON() }, error: null };

@@ -36,6 +36,14 @@ const UserModel = sequelize.define('user', {
         msg: "Email is not valid"
       }
     }
+  },
+  currency: {
+    type: DataTypes.STRING(3),
+    allowNull: false,
+    defaultValue: "INR",
+    validate: {
+      len: [3, 3]
+    }
   }
 }, {
   timestamps: true,

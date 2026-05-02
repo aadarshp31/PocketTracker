@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTransactions } from '../features/transactions/hooks/useTransactions'
 import { useCategories } from '../features/transactions/hooks/useCategories'
 import { useCreateTransaction } from '../features/transactions/hooks/useCreateTransaction'
 import { useUpdateTransaction } from '../features/transactions/hooks/useUpdateTransaction'
 import { useDeleteTransaction } from '../features/transactions/hooks/useDeleteTransaction'
+import { useProfile } from '../features/profile/hooks/useProfile'
+import { formatCurrency } from '../shared/utils/currency'
 import type { TransactionType } from '../features/transactions/types'
 
 interface TransactionFormState {
@@ -22,6 +24,16 @@ const initialFormState: TransactionFormState = {
   date: new Date().toISOString().slice(0, 10),
 }
 
+function buildQuickAddState(form: TransactionFormState): TransactionFormState {
+  return {
+    amount: '',
+    description: '',
+    type: form.type,
+    category_id: form.category_id,
+    date: form.date,
+  }
+}
+
 function toPayload(form: TransactionFormState) {
   return {
     amount: Number(form.amount),
@@ -37,11 +49,14 @@ export function TransactionsPage() {
   const [form, setForm] = useState<TransactionFormState>(initialFormState)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formError, setFormError] = useState('')
+  const [formNotice, setFormNotice] = useState('')
+  const amountInputRef = useRef<HTMLInputElement | null>(null)
 
   const limit = 10
 
   const query = useTransactions({ page, limit })
   const categoriesQuery = useCategories()
+  const profileQuery = useProfile()
   const createMutation = useCreateTransaction()
   const updateMutation = useUpdateTransaction()
   const deleteMutation = useDeleteTransaction()
@@ -51,8 +66,15 @@ export function TransactionsPage() {
     () => categories.filter((cat) => cat.type === form.type),
     [categories, form.type]
   )
+  const recentTransaction = query.data?.transactions?.[0] ?? null
 
   const isMutating = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending
+
+  useEffect(() => {
+    if (!editingId) {
+      amountInputRef.current?.focus()
+    }
+  }, [editingId])
 
   function validateForm() {
     if (!form.amount || Number(form.amount) <= 0) return 'Amount must be greater than 0.'
@@ -61,10 +83,11 @@ export function TransactionsPage() {
     return ''
   }
 
-  function resetForm() {
-    setForm(initialFormState)
+  function resetForm(clearDefaults = false) {
+    setForm((prev) => (clearDefaults ? initialFormState : buildQuickAddState(prev)))
     setEditingId(null)
     setFormError('')
+    setFormNotice('')
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -83,11 +106,17 @@ export function TransactionsPage() {
         transactionId: editingId,
         payload: toPayload(form),
       })
+      setForm(initialFormState)
+      setFormNotice('Transaction updated.')
     } else {
       await createMutation.mutateAsync(toPayload(form))
+      setForm(buildQuickAddState(form))
+      setFormNotice('Saved. Amount and note cleared for the next entry.')
     }
 
-    resetForm()
+    setEditingId(null)
+    setFormError('')
+    amountInputRef.current?.focus()
   }
 
   function onEdit(transaction: {
@@ -98,6 +127,7 @@ export function TransactionsPage() {
     category_id: string
     date: string
   }) {
+    setFormNotice('')
     setEditingId(transaction.id)
     setForm({
       amount: transaction.amount,
@@ -112,7 +142,16 @@ export function TransactionsPage() {
     await deleteMutation.mutateAsync(transactionId)
   }
 
-  if (query.isLoading || categoriesQuery.isLoading) {
+  function applyDateShortcut(offsetDays: number) {
+    const date = new Date()
+    date.setDate(date.getDate() + offsetDays)
+    setForm((prev) => ({
+      ...prev,
+      date: date.toISOString().slice(0, 10),
+    }))
+  }
+
+  if (query.isLoading || categoriesQuery.isLoading || profileQuery.isLoading) {
     return (
       <section>
         <h1>Transactions</h1>
@@ -121,7 +160,7 @@ export function TransactionsPage() {
     )
   }
 
-  if (query.isError || categoriesQuery.isError) {
+  if (query.isError || categoriesQuery.isError || profileQuery.isError) {
     return (
       <section>
         <h1>Transactions</h1>
@@ -132,51 +171,141 @@ export function TransactionsPage() {
 
   const transactions = query.data?.transactions ?? []
   const meta = query.data?.meta
+  const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
 
   return (
-    <section>
-      <h1>Transactions</h1>
-      <p className="muted">Create, edit, and delete your transactions.</p>
+    <section className="transactions-page">
+      <div className="transactions-hero">
+        <div>
+          <h1>Transactions</h1>
+          <p className="muted transactions-subtitle">
+            Quick add is optimized for repeated entry. Your type, category, and date stay in place after each save.
+          </p>
+        </div>
+        <div className="transactions-hero-stats">
+          <div className="transactions-stat-card">
+            <span className="transactions-stat-label">Shown here</span>
+            <strong>{transactions.length}</strong>
+          </div>
+          <div className="transactions-stat-card">
+            <span className="transactions-stat-label">Latest</span>
+            <strong>{recentTransaction ? formatCurrency(recentTransaction.amount, currency) : 'No entries'}</strong>
+          </div>
+        </div>
+      </div>
 
-      <div className="table-wrap" style={{ padding: '1rem', marginBottom: '1rem' }}>
-        <h2 style={{ marginTop: 0 }}>{editingId ? 'Edit Transaction' : 'Add Transaction'}</h2>
-        <form onSubmit={onSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
-          <div style={{ display: 'grid', gap: '0.25rem' }}>
-            <label htmlFor="txn-amount">Amount</label>
-            <input
-              id="txn-amount"
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.amount}
-              onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
-              disabled={isMutating}
-            />
+      <div className="table-wrap quick-entry-card">
+        <div className="quick-entry-header">
+          <div>
+            <span className={`quick-entry-badge ${editingId ? 'is-editing' : 'is-adding'}`}>
+              {editingId ? 'Editing' : 'Quick Add'}
+            </span>
+            <h2>{editingId ? 'Update this transaction' : 'Add a transaction in seconds'}</h2>
+            <p className="muted quick-entry-helper">
+              Pick the type once, tap a category, enter the amount, and keep moving.
+            </p>
+          </div>
+          <button type="button" className="ghost-button" onClick={() => resetForm(true)} disabled={isMutating}>
+            Reset Defaults
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit} className="quick-entry-form">
+          <div className="quick-type-toggle" role="tablist" aria-label="transaction type">
+            {(['expense', 'income'] as TransactionType[]).map((type) => (
+              <button
+                key={type}
+                type="button"
+                className={`type-pill ${form.type === type ? 'is-active' : ''}`}
+                onClick={() =>
+                  setForm((prev) => ({
+                    ...prev,
+                    type,
+                    category_id: prev.type === type ? prev.category_id : '',
+                  }))
+                }
+                disabled={isMutating}
+              >
+                {type === 'expense' ? 'Expense' : 'Income'}
+              </button>
+            ))}
           </div>
 
-          <div style={{ display: 'grid', gap: '0.25rem' }}>
-            <label htmlFor="txn-type">Type</label>
-            <select
-              id="txn-type"
-              value={form.type}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  type: e.target.value as TransactionType,
-                  category_id: '',
-                }))
-              }
-              disabled={isMutating}
-            >
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-            </select>
+          <div className="quick-form-grid">
+            <label className="quick-field quick-field-amount" htmlFor="txn-amount">
+              <span>Amount</span>
+              <div className="amount-input-shell">
+                <span className="amount-currency">{currency}</span>
+                <input
+                  ref={amountInputRef}
+                  id="txn-amount"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={form.amount}
+                  onChange={(e) => setForm((prev) => ({ ...prev, amount: e.target.value }))}
+                  disabled={isMutating}
+                />
+              </div>
+            </label>
+
+            <label className="quick-field" htmlFor="txn-date">
+              <span>Date</span>
+              <input
+                id="txn-date"
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
+                disabled={isMutating}
+              />
+            </label>
+
+            <label className="quick-field quick-field-description" htmlFor="txn-description">
+              <span>Note</span>
+              <input
+                id="txn-description"
+                type="text"
+                placeholder="Optional note or merchant"
+                value={form.description}
+                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+                disabled={isMutating}
+              />
+            </label>
           </div>
 
-          <div style={{ display: 'grid', gap: '0.25rem' }}>
-            <label htmlFor="txn-category">Category</label>
+          <div className="quick-date-shortcuts">
+            <span className="quick-date-label">Shortcuts</span>
+            <button type="button" className="ghost-chip" onClick={() => applyDateShortcut(0)} disabled={isMutating}>
+              Today
+            </button>
+            <button type="button" className="ghost-chip" onClick={() => applyDateShortcut(-1)} disabled={isMutating}>
+              Yesterday
+            </button>
+          </div>
+
+          <div className="quick-category-section">
+            <div className="quick-category-header">
+              <label htmlFor="txn-category">Category</label>
+              <span className="muted">Tap once to keep using the same bucket for the next entries.</span>
+            </div>
+            <div className="quick-category-list" aria-label="category shortcuts">
+              {filteredCategories.map((category) => (
+                <button
+                  key={category.id}
+                  type="button"
+                  className={`category-chip ${form.category_id === category.id ? 'is-selected' : ''}`}
+                  onClick={() => setForm((prev) => ({ ...prev, category_id: category.id }))}
+                  disabled={isMutating}
+                >
+                  {category.name}
+                </button>
+              ))}
+            </div>
             <select
               id="txn-category"
+              className="quick-category-select"
               value={form.category_id}
               onChange={(e) => setForm((prev) => ({ ...prev, category_id: e.target.value }))}
               disabled={isMutating}
@@ -190,36 +319,15 @@ export function TransactionsPage() {
             </select>
           </div>
 
-          <div style={{ display: 'grid', gap: '0.25rem' }}>
-            <label htmlFor="txn-date">Date</label>
-            <input
-              id="txn-date"
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
-              disabled={isMutating}
-            />
-          </div>
+          {formError ? <p className="error quick-feedback">{formError}</p> : null}
+          {!formError && formNotice ? <p className="quick-feedback quick-feedback-success">{formNotice}</p> : null}
 
-          <div style={{ display: 'grid', gap: '0.25rem' }}>
-            <label htmlFor="txn-description">Description</label>
-            <input
-              id="txn-description"
-              type="text"
-              value={form.description}
-              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-              disabled={isMutating}
-            />
-          </div>
-
-          {formError ? <p className="error" style={{ margin: 0 }}>{formError}</p> : null}
-
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="submit" disabled={isMutating}>
-              {editingId ? 'Update Transaction' : 'Create Transaction'}
+          <div className="quick-entry-actions">
+            <button type="submit" className="primary-button" disabled={isMutating}>
+              {editingId ? 'Save Changes' : 'Save Transaction'}
             </button>
             {editingId ? (
-              <button type="button" onClick={resetForm} disabled={isMutating}>
+              <button type="button" className="ghost-button" onClick={() => resetForm(true)} disabled={isMutating}>
                 Cancel Edit
               </button>
             ) : null}
@@ -247,14 +355,18 @@ export function TransactionsPage() {
               transactions.map((item) => (
                 <tr key={item.id}>
                   <td>{new Date(item.date).toLocaleDateString()}</td>
-                  <td>{item.type}</td>
-                  <td>{item.amount}</td>
+                  <td>
+                    <span className={`transaction-type-badge ${item.type === 'income' ? 'is-income' : 'is-expense'}`}>
+                      {item.type}
+                    </span>
+                  </td>
+                  <td>{formatCurrency(item.amount, currency)}</td>
                   <td>{item.description ?? '-'}</td>
-                  <td style={{ display: 'flex', gap: '0.5rem' }}>
+                  <td className="transaction-actions-cell">
                     <button onClick={() => onEdit(item)} disabled={isMutating}>
                       Edit
                     </button>
-                    <button onClick={() => onDelete(item.id)} disabled={isMutating}>
+                    <button className="danger-button" onClick={() => onDelete(item.id)} disabled={isMutating}>
                       Delete
                     </button>
                   </td>

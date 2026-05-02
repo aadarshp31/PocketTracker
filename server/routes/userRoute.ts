@@ -5,6 +5,9 @@ import UserService from '../services/UserService';
 const userRoute = express.Router();
 const userController = new UserController(new UserService());
 
+userRoute.get("/me", userController.getMe.bind(userController));
+userRoute.put("/me", userController.updateMe.bind(userController));
+
 userRoute.param("userId", userController.getById.bind(userController));
 
 userRoute.get("/:userId", userController.getOne.bind(userController));

@@ -7,6 +7,8 @@ declare global {
       user?: {
         id: string;
         email: string;
+                first_name?: string;
+                last_name?: string;
       };
     }
   }
@@ -35,7 +37,9 @@ export default class Middlewares {
             // Extract user info from Supabase token
             req.user = {
                 id: data.user.id,
-                email: data.user.email || ""
+                email: data.user.email || "",
+                first_name: data.user.user_metadata?.first_name,
+                last_name: data.user.user_metadata?.last_name
             };
 
             next();
