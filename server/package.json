@@ -13,7 +13,8 @@
     "build": "tsc",
     "build:client": "npm --prefix ../client run build:server-public",
     "build:prod": "npm run build && npm run build:client",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"No default test suite configured\"",
+    "test:insights": "DOTENV_CONFIG_PATH=\"${ENV_FILE_PATH:-$HOME/adarsh-envs/PocketTracker/server/.env}\" node -r dotenv/config -r ts-node/register tests/insightsService.test.ts"
   },
   "author": "aadarshp31",
   "license": "CC-BY-NC-4.0",

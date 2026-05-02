@@ -12,6 +12,7 @@ import cors from 'cors'
 import Middlewares from './middlewares/Middlewares';
 import budgetRoute from './routes/budgetRoute';
 import authRoute from './routes/AuthRoutes';
+import insightsRoute from './routes/insightsRoute';
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use('/api/users', Middlewares.verifyAuth, userRoute);
 app.use('/api/categories', Middlewares.verifyAuth, categoryRoute);
 app.use('/api/transactions', Middlewares.verifyAuth, transactionRoute);
 app.use('/api/budgets', Middlewares.verifyAuth, budgetRoute);
+app.use('/api/insights', Middlewares.verifyAuth, insightsRoute);
 
 // middlewares for api error handling
 app.use(Middlewares.notFound);
