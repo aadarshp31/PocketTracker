@@ -30,3 +30,13 @@ https://pockettracker-server.onrender.com/api/
 - Client: run `Start Client` launch config or `cd server && npm run dev:client`
 - Full stack in VS Code: run `Start Full Stack` compound launch config
 - Full stack via npm: run `cd server && npm run dev:full`
+
+### Auth Cookie Configuration
+- API auth now uses an HttpOnly cookie (`pt_auth_token`) instead of localStorage bearer tokens.
+- Server must allow credentialed CORS:
+	- Set `CORS_ORIGIN` to your client origin(s), comma-separated.
+	- Example (prod): `CORS_ORIGIN=https://pocket-tracker-one.vercel.app`
+- Cookie behavior:
+	- `AUTH_COOKIE_SAME_SITE=none` for cross-site deployments over HTTPS.
+	- `AUTH_COOKIE_SAME_SITE=lax` for same-site local development.
+- Client requests already use `withCredentials` / `credentials: include`.
