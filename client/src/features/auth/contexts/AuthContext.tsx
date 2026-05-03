@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       try {
         const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+        const { data: { session } } = await supabase.auth.getSession()
         if (supabaseUser) {
           setUser({
             id: supabaseUser.id,
@@ -43,6 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             firstName: supabaseUser.user_metadata?.first_name || '',
             lastName: supabaseUser.user_metadata?.last_name || '',
           })
+          if (session?.access_token) {
+            localStorage.setItem('auth_token', session.access_token)
+          }
         }
       } catch (error) {
         console.error('Auth check failed:', error)
@@ -136,12 +140,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) throw error
+
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email || '',
+          firstName: data.user.user_metadata?.first_name || '',
+          lastName: data.user.user_metadata?.last_name || '',
+        })
+      }
+
+      if (data.session?.access_token) {
+        localStorage.setItem('auth_token', data.session.access_token)
+      }
     } finally {
       setIsLoading(false)
     }
