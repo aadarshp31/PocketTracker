@@ -1,44 +1,43 @@
 import { NextFunction, Request, Response } from "express";
 import CategoryService from "../services/CategoryService";
 import UserService from "../services/UserService";
+import AuthService from "../services/AuthService";
 
 export default class CategoryController {
   private categoryService: CategoryService;
-  private userService: UserService;
+  private authService: AuthService;
 
-  constructor(categoryService: CategoryService, userService: UserService) {
+  constructor(categoryService: CategoryService, _userService: UserService) {
     this.categoryService = categoryService;
-    this.userService = userService;
+    this.authService = new AuthService();
+  }
+
+  private async getUserIdFromSupabaseId(supabaseId: string): Promise<string | null> {
+    const user = await this.authService.getUserBySuperbaseId(supabaseId);
+    return user ? (user.get("id") as string) : null;
   }
 
   async getAll(req: Request, res: Response) {
     try {
-      const userId = req.query.userId;
+      if (!req.user?.id) {
+        res.status(401).json({
+          message: 'User not authenticated'
+        });
+        return;
+      }
 
+      const userId = await this.getUserIdFromSupabaseId(req.user.id);
       if (!userId) {
-        res.status(400).json({
-          message: 'user id is required for getting categories'
+        res.status(404).json({
+          message: 'User profile not found in database'
         });
         return;
       }
 
-
-      const user = await this.userService.getUserById((req.query.userId as string));
-
-      if(!user){
-        res.status(400).send({
-          message: 'invalid userId'
-        });
-        return;
-      }
-      
-      // @ts-ignore
-      req.user = user;
-
-      const categories = await this.categoryService.getAllCategories((userId as string));
+      const categories = await this.categoryService.getAllCategories(userId);
 
       if (!categories || categories.length === 0) {
-        res.status(204).send();
+        res.status(200).json({ categories: [] });
         return;
       }
 
@@ -90,18 +89,23 @@ export default class CategoryController {
 
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
-      if (!req.query.userId) {
-        res.status(400).json({
-          message: 'user id is required for getting categories'
+      if (!req.user?.id) {
+        res.status(401).json({
+          message: 'User not authenticated'
         });
         return;
       }
 
-      const user = await this.userService.getUserById((req.query.userId as string));
-      const category = await this.categoryService.getCategoryById(req.params.categoryId, (req.query.userId as string));
+      const userId = await this.getUserIdFromSupabaseId(req.user.id);
+      if (!userId) {
+        res.status(404).json({
+          message: 'User profile not found in database'
+        });
+        return;
+      }
+
+      const category = await this.categoryService.getCategoryById(req.params.categoryId, userId);
       
-      // @ts-ignore
-      req.user = user;
       // @ts-ignore
       req.category = category;
       next();
@@ -114,9 +118,17 @@ export default class CategoryController {
 
   async updateById(req: Request, res: Response) {
     try {
-      if (!req.query.userId) {
-        res.status(400).json({
-          message: 'user id is required for getting categories'
+      if (!req.user?.id) {
+        res.status(401).json({
+          message: 'User not authenticated'
+        });
+        return;
+      }
+
+      const userId = await this.getUserIdFromSupabaseId(req.user.id);
+      if (!userId) {
+        res.status(404).json({
+          message: 'User profile not found in database'
         });
         return;
       }
@@ -128,7 +140,7 @@ export default class CategoryController {
         throw new Error(`No category found with the id ${req.params.categoryId}`);
       }
 
-      const updatedCategory = await this.categoryService.updateCategoryById(category.id, req.body, (req.query.userId as string));
+      const updatedCategory = await this.categoryService.updateCategoryById(category.id, req.body, userId);
 
       res.json({
         message: "category updated successfully",
@@ -151,9 +163,17 @@ export default class CategoryController {
 
   async deleteById(req: Request, res: Response) {
     try {
-      if (!req.query.userId) {
-        res.status(400).json({
-          message: 'user id is required for getting categories'
+      if (!req.user?.id) {
+        res.status(401).json({
+          message: 'User not authenticated'
+        });
+        return;
+      }
+
+      const userId = await this.getUserIdFromSupabaseId(req.user.id);
+      if (!userId) {
+        res.status(404).json({
+          message: 'User profile not found in database'
         });
         return;
       }
@@ -165,7 +185,7 @@ export default class CategoryController {
         throw new Error(`No category found with the id ${req.params.categoryId}`);
       }
 
-      await this.categoryService.deleteCategoryById(category.id, (req.query.userId as string));
+      await this.categoryService.deleteCategoryById(category.id, userId);
 
       res.json({
         message: "category deleted successfully",
@@ -180,29 +200,27 @@ export default class CategoryController {
 
   async create(req: Request, res: Response) {
     try {
-      const categoryDetails = req.body;
-      const userId = req.query.userId;
+      if (!req.user?.id) {
+        res.status(401).json({
+          message: 'User not authenticated'
+        });
+        return;
+      }
 
+      const userId = await this.getUserIdFromSupabaseId(req.user.id);
       if (!userId) {
-        res.status(400).json({
-          message: 'user id is required'
+        res.status(404).json({
+          message: 'User profile not found in database'
         });
         return;
       }
 
-      const user = await this.userService.getUserById(userId as string);
-
-      if(!user){
-        res.status(400).send({
-          message: 'invalid userId'
-        });
-        return;
-      }
+      const categoryDetails = req.body;
 
       const createdCategory = await this.categoryService.createCategory({
         name: categoryDetails.name,
         type: categoryDetails.type,
-        user_id: userId as string,
+        user_id: userId,
         is_default: categoryDetails.is_default
       })
 

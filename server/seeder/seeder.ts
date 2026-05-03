@@ -8,6 +8,8 @@ import TransactionModel from "../models/TransactionModel";
 import BudgetModel from "../models/BudgetModel";
 import BudgetService from "../services/BudgetService";
 
+const TEST_SUPABASE_UID = "381c3a3b-7e8f-45cd-af23-98b7a1fe8727";
+
 export async function allSeeder() {
   await seedUsers();
   await seedCategories();
@@ -23,7 +25,11 @@ export async function seedUsers() {
       return;
     }
 
-    await new UserService().createBulk(dummyDataJson.users)
+    const usersWithTestUid = dummyDataJson.users.map((user, index) => (
+      index === 0 ? { ...user, supabase_id: TEST_SUPABASE_UID } : user
+    ));
+
+    await new UserService().createBulk(usersWithTestUid)
     console.log("<-------- dummy users created successfully -------->");
   } catch (error) {
     console.info('<-------- seeder failed for users --------> : ', error);
@@ -32,15 +38,22 @@ export async function seedUsers() {
 
 export async function seedCategories() {
   try {
-    const singleCategory = await CategoryModel.findOne();
+    const existingIds = new Set(
+      (await CategoryModel.findAll({ attributes: ['id'], where: { is_default: true } }))
+        .map((c) => c.get('id') as string)
+    );
 
-    if (singleCategory) {
+    const missing = dummyDataJson.category.filter((c) => !existingIds.has(c.id));
+
+    if (missing.length === 0) {
       return;
     }
 
-    // @ts-ignore
-    await new CategoryService().createBulk(dummyDataJson.category)
-    console.log("<-------- dummy categories created successfully -------->");
+    await CategoryModel.bulkCreate(
+      missing.map((c) => ({ ...c, is_default: true })),
+      { ignoreDuplicates: true }
+    );
+    console.log(`<-------- ${missing.length} default categories added successfully >`);
   } catch (error) {
     console.info('<-------- seeder failed for categories --------> : ', error);
   }

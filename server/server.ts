@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: process.env.ENV_FILE_PATH || '.env' });
 import express, { Request, Response } from 'express'
 import { connectToRelationalDatabase } from './config/dbConnection';
 import userRoute from './routes/userRoute';
@@ -12,6 +12,7 @@ import cors from 'cors'
 import Middlewares from './middlewares/Middlewares';
 import budgetRoute from './routes/budgetRoute';
 import authRoute from './routes/AuthRoutes';
+import insightsRoute from './routes/insightsRoute';
 
 const app = express();
 
@@ -48,14 +49,15 @@ app.get('/api/', async (req: Request, res: Response) => {
   });
 });
 
-// data endpoints
-app.use('/api/users', userRoute);
-app.use('/api/categories', categoryRoute);
-app.use('/api/transactions', transactionRoute);
-app.use('/api/budgets', budgetRoute);
-
-// auth endpoints
+// auth endpoints (no authentication required)
 app.use('/api/auth', authRoute);
+
+// Protected routes - apply JWT verification middleware
+app.use('/api/users', Middlewares.verifyAuth, userRoute);
+app.use('/api/categories', Middlewares.verifyAuth, categoryRoute);
+app.use('/api/transactions', Middlewares.verifyAuth, transactionRoute);
+app.use('/api/budgets', Middlewares.verifyAuth, budgetRoute);
+app.use('/api/insights', Middlewares.verifyAuth, insightsRoute);
 
 // middlewares for api error handling
 app.use(Middlewares.notFound);

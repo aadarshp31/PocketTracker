@@ -13,7 +13,8 @@ export const sequelize = new Sequelize((process.env.DATABASE_URL as string), {
 export async function connectToRelationalDatabase() {
   try {
     if(process.env.NODE_ENV === "development") {
-      await sequelize.sync({ force: process.env.SYNC_SHOULD_DROP_DB ? Boolean(process.env.SYNC_SHOULD_DROP_DB) : false}); // Ensures tables are created
+      const shouldDrop = process.env.SYNC_SHOULD_DROP_DB ? Boolean(process.env.SYNC_SHOULD_DROP_DB) : false;
+      await sequelize.sync({ force: shouldDrop, alter: !shouldDrop }); // force drops+recreates; alter updates columns
       console.log('Database synced successfully.');
     }
     

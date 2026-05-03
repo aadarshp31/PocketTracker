@@ -113,7 +113,12 @@
     {"id":"86b335a9-4c5c-4ad9-86cc-cdf0ff481b1a","name":"Dining Out","type":"expense","is_default":"true","user_id":null,"createdAt":"6/13/2024","updatedAt":"5/23/2024"},
     {"id":"2397944d-5426-4272-869b-df111df579f5","name":"Education","type":"expense","is_default":"true","user_id":null,"createdAt":"12/31/2023","updatedAt":"9/1/2024"},
     {"id":"1c32f3ea-8938-455b-9c5f-5ecd368a91b9","name":"Travel","type":"expense","is_default":"true","user_id":null,"createdAt":"10/18/2024","updatedAt":"7/19/2024"},
-    {"id":"521a8e56-3878-498a-aabb-9844cb602a86","name":"Credit Card Bills","type":"expense","is_default":"true","user_id":null,"createdAt":"7/17/2024","updatedAt":"5/7/2024"}
+    {"id":"521a8e56-3878-498a-aabb-9844cb602a86","name":"Credit Card Bills","type":"expense","is_default":"true","user_id":null,"createdAt":"7/17/2024","updatedAt":"5/7/2024"},
+    {"id":"a1b2c3d4-e5f6-7890-abcd-ef1234567890","name":"Investments","type":"expense","is_default":"true","user_id":null,"createdAt":"5/3/2025","updatedAt":"5/3/2025"},
+    {"id":"b2c3d4e5-f6a7-8901-bcde-f12345678901","name":"Investment Returns","type":"income","is_default":"true","user_id":null,"createdAt":"5/3/2025","updatedAt":"5/3/2025"},
+    {"id":"c3d4e5f6-a7b8-9012-cdef-123456789012","name":"Savings","type":"expense","is_default":"true","user_id":null,"createdAt":"5/3/2025","updatedAt":"5/3/2025"},
+    {"id":"d4e5f6a7-b8c9-0123-defa-234567890123","name":"Other","type":"expense","is_default":"true","user_id":null,"createdAt":"5/3/2025","updatedAt":"5/3/2025"},
+    {"id":"e5f6a7b8-c9d0-1234-efab-345678901234","name":"Other","type":"income","is_default":"true","user_id":null,"createdAt":"5/3/2025","updatedAt":"5/3/2025"}
   ],
   "transactions": [
     {"id":"549973ab-52e1-4ee6-ac18-198aa732ba1b","amount":23613.72,"type":"expense","description":"Nulla mollis molestie lorem. Quisque ut erat. Curabitur gravida nisi at nibh. In hac habitasse platea dictumst. Aliquam augue quam, sollicitudin vitae, consectetuer eget, rutrum at, lorem. Integer tincidunt ante vel ipsum. Praesent blandit lacinia erat. Vestibulum sed magna at nunc commodo placerat.","user_id":"ac460c69-bbad-4e55-8c78-982ccf24a893","category_id":"ff3411be-a592-42ad-b3f1-47f9621dd171","createdAt":"9/3/2024","updatedAt":"3/27/2024","date":"11/27/2024"},
