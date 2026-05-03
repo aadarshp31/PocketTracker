@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export function LoginPage() {
@@ -10,6 +10,13 @@ export function LoginPage() {
   
   const { signIn } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  const requestedRedirect = searchParams.get('redirect')
+  const redirectTo =
+    requestedRedirect && requestedRedirect.startsWith('/') && !requestedRedirect.startsWith('//')
+      ? requestedRedirect
+      : '/dashboard'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -18,7 +25,7 @@ export function LoginPage() {
 
     try {
       await signIn(email, password)
-      navigate('/dashboard')
+      navigate(redirectTo, { replace: true })
     } catch (err: any) {
       setError(err.message || 'Failed to sign in')
     } finally {

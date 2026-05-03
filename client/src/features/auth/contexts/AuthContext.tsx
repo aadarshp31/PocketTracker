@@ -3,10 +3,19 @@ import type { ReactNode } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { apiBaseUrl } from '../../../shared/api/http'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim()
+const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+// Validate environment variables
+if (!supabaseUrl || !supabaseKey) {
+  console.error(
+    'Missing Supabase environment variables. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.'
+  )
+}
+
+const supabase = createClient(supabaseUrl || '', supabaseKey || '')
+const emailRedirectUri =
+  (import.meta.env.VITE_AUTH_EMAIL_REDIRECT_TO || '').trim() || `${window.location.origin}/auth/login`
 
 interface AuthUser {
   id: string
@@ -36,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       try {
         const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+        const { data: { session } } = await supabase.auth.getSession()
         if (supabaseUser) {
           setUser({
             id: supabaseUser.id,
@@ -43,6 +53,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             firstName: supabaseUser.user_metadata?.first_name || '',
             lastName: supabaseUser.user_metadata?.last_name || '',
           })
+          if (session?.access_token) {
+            localStorage.setItem('auth_token', session.access_token)
+          }
         }
       } catch (error) {
         console.error('Auth check failed:', error)
@@ -103,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             first_name: firstName,
             last_name: lastName,
           },
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          emailRedirectTo: emailRedirectUri,
         },
       })
 
@@ -136,12 +149,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) throw error
+
+      if (data.user) {
+        setUser({
+          id: data.user.id,
+          email: data.user.email || '',
+          firstName: data.user.user_metadata?.first_name || '',
+          lastName: data.user.user_metadata?.last_name || '',
+        })
+      }
+
+      if (data.session?.access_token) {
+        localStorage.setItem('auth_token', data.session.access_token)
+      }
     } finally {
       setIsLoading(false)
     }
