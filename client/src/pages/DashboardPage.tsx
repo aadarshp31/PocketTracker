@@ -1,22 +1,42 @@
+import { Suspense, lazy } from 'react'
+import { useMemo, useState } from 'react'
 import { useCategories } from '../features/insights/hooks/useCategories'
 import { useDailyPattern } from '../features/insights/hooks/useDailyPattern'
+import { useMonthlyTrend } from '../features/insights/hooks/useMonthlyTrend'
 import { useProjection } from '../features/insights/hooks/useProjection'
 import { useSpikes } from '../features/insights/hooks/useSpikes'
 import { useSummary } from '../features/insights/hooks/useSummary'
 import { useProfile } from '../features/profile/hooks/useProfile'
 import { formatCurrency } from '../shared/utils/currency'
 
+const DashboardCharts = lazy(() => import('../features/insights/components/DashboardCharts'))
+
 export function DashboardPage() {
+  const today = new Date()
+  const [selectedMonth, setSelectedMonth] = useState(today.getUTCMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(today.getUTCFullYear())
+
+  const periodParams = useMemo(
+    () => ({ month: selectedMonth, year: selectedYear }),
+    [selectedMonth, selectedYear]
+  )
+  const yearOptions = useMemo(() => {
+    const currentYear = today.getUTCFullYear()
+    return Array.from({ length: 4 }, (_, index) => currentYear - index)
+  }, [today])
+
   const profileQuery = useProfile()
-  const summaryQuery = useSummary()
-  const categoryQuery = useCategories({ limit: 6 })
+  const summaryQuery = useSummary(periodParams)
+  const trendQuery = useMonthlyTrend({ months: 6, ...periodParams })
+  const categoryQuery = useCategories({ limit: 6, ...periodParams })
   const patternQuery = useDailyPattern({ days: 30 })
   const spikesQuery = useSpikes({ days: 30, threshold: 2 })
-  const projectionQuery = useProjection()
+  const projectionQuery = useProjection(periodParams)
 
   const isLoading =
     profileQuery.isLoading ||
     summaryQuery.isLoading ||
+    trendQuery.isLoading ||
     categoryQuery.isLoading ||
     patternQuery.isLoading ||
     spikesQuery.isLoading ||
@@ -25,6 +45,7 @@ export function DashboardPage() {
   const hasError =
     profileQuery.isError ||
     summaryQuery.isError ||
+    trendQuery.isError ||
     categoryQuery.isError ||
     patternQuery.isError ||
     spikesQuery.isError ||
@@ -49,17 +70,57 @@ export function DashboardPage() {
   }
 
   const summary = summaryQuery.data?.data
-  const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
-  const categories = categoryQuery.data?.data.categories ?? []
-  const totalCategoryExpenses = categoryQuery.data?.data.totalExpenses ?? '0.00'
-  const pattern = patternQuery.data?.data.weekPattern ?? []
-  const spikes = spikesQuery.data?.data.spikes ?? []
+  const trend = trendQuery.data?.data
+  const categories = categoryQuery.data?.data
+  const pattern = patternQuery.data?.data
+  const spikes = spikesQuery.data?.data
   const projection = projectionQuery.data?.data
+  const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
 
   return (
-    <section>
+    <section className="dashboard-page">
       <h1>Dashboard</h1>
       <p className="muted">Insights based on your authenticated transaction history.</p>
+
+      <div className="table-wrap dashboard-card dashboard-filter-card">
+        <div className="dashboard-card-header">
+          <div>
+            <h2>Time Window</h2>
+            <p className="muted">Switch the reporting month for summary, category mix, trend, and projection.</p>
+          </div>
+        </div>
+        <div className="dashboard-filter-grid">
+          <label className="dashboard-filter-field" htmlFor="dashboard-month">
+            <span>Month</span>
+            <select
+              id="dashboard-month"
+              value={selectedMonth}
+              onChange={(event) => setSelectedMonth(Number(event.target.value))}
+            >
+              {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+                <option key={month} value={month}>
+                  {new Date(Date.UTC(2026, month - 1, 1)).toLocaleString(undefined, { month: 'long', timeZone: 'UTC' })}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="dashboard-filter-field" htmlFor="dashboard-year">
+            <span>Year</span>
+            <select
+              id="dashboard-year"
+              value={selectedYear}
+              onChange={(event) => setSelectedYear(Number(event.target.value))}
+            >
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
 
       {summary && (
         <div className="table-wrap" style={{ padding: '1rem', marginBottom: '1rem' }}>
@@ -96,91 +157,21 @@ export function DashboardPage() {
         </div>
       )}
 
-      <div className="table-wrap" style={{ padding: '1rem', marginBottom: '1rem' }}>
-        <h2 style={{ marginTop: 0 }}>Category Breakdown (Expenses)</h2>
-        <p>Total: <strong>{formatCurrency(totalCategoryExpenses, currency)}</strong></p>
-        {categories.length === 0 ? (
-          <p className="muted">No category data for the selected period.</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Category</th>
-                <th>Total</th>
-                <th>Share</th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map((category) => (
-                <tr key={category.categoryId}>
-                  <td>{category.categoryName}</td>
-                  <td>{formatCurrency(category.total, currency)}</td>
-                  <td>{category.percentage}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div className="table-wrap" style={{ padding: '1rem', marginBottom: '1rem' }}>
-        <h2 style={{ marginTop: 0 }}>Day-of-Week Pattern (Last 30 Days)</h2>
-        {pattern.length === 0 ? (
-          <p className="muted">No daily pattern data available.</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Day</th>
-                <th>Transactions</th>
-                <th>Total</th>
-                <th>Average</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pattern.map((item) => (
-                <tr key={item.day}>
-                  <td>{item.day}</td>
-                  <td>{item.transactionCount}</td>
-                  <td>{formatCurrency(item.total, currency)}</td>
-                  <td>{formatCurrency(item.average, currency)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
-      <div className="table-wrap" style={{ padding: '1rem', marginBottom: '1rem' }}>
-        <h2 style={{ marginTop: 0 }}>Spending Spikes</h2>
-        {spikes.length === 0 ? (
-          <p className="muted">No spikes detected in the selected window.</p>
-        ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Total</th>
-                <th>Ratio vs Baseline</th>
-                <th>Severity</th>
-              </tr>
-            </thead>
-            <tbody>
-              {spikes.map((spike) => (
-                <tr key={spike.date}>
-                  <td>{new Date(spike.date).toLocaleDateString()}</td>
-                  <td>{formatCurrency(spike.total, currency)}</td>
-                  <td>{spike.ratio}x</td>
-                  <td>{spike.severity}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      {trend && categories && pattern && spikes ? (
+        <Suspense fallback={<div className="table-wrap dashboard-card"><p className="muted">Loading charts...</p></div>}>
+          <DashboardCharts
+            currency={currency}
+            trendData={trend}
+            categoryData={categories}
+            patternData={pattern}
+            spikesData={spikes}
+            projection={projection}
+          />
+        </Suspense>
+      ) : null}
 
       {projection && (
-        <div className="table-wrap" style={{ padding: '1rem' }}>
+        <div className="table-wrap dashboard-card" style={{ padding: '1rem' }}>
           <h2 style={{ marginTop: 0 }}>End-of-Month Projection</h2>
           <p style={{ margin: 0 }}>
             Month-to-date: <strong>{formatCurrency(projection.monthToDateExpenses, currency)}</strong>

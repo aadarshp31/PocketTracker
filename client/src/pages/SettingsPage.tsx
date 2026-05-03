@@ -4,7 +4,7 @@ import { useUpdateProfile } from '../features/profile/hooks/useUpdateProfile'
 
 const currencyOptions = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD', 'JPY']
 
-export function SettingsPage() {
+export function ProfilePage() {
   const profileQuery = useProfile()
   const updateProfile = useUpdateProfile()
   const [currency, setCurrency] = useState('INR')
@@ -20,7 +20,7 @@ export function SettingsPage() {
   if (profileQuery.isLoading) {
     return (
       <section>
-        <h1>Settings</h1>
+        <h1>Profile</h1>
         <p>Loading profile settings...</p>
       </section>
     )
@@ -29,7 +29,7 @@ export function SettingsPage() {
   if (profileQuery.isError || !profile) {
     return (
       <section>
-        <h1>Settings</h1>
+        <h1>Profile</h1>
         <p className="error">Failed to load profile settings.</p>
       </section>
     )
@@ -42,8 +42,8 @@ export function SettingsPage() {
 
   return (
     <section>
-      <h1>Settings</h1>
-      <p className="muted">Profile preferences for localization and display.</p>
+      <h1>Profile</h1>
+      <p className="muted">Manage your account information and preferences.</p>
 
       <div className="table-wrap" style={{ padding: '1rem', maxWidth: '520px' }}>
         <form onSubmit={onSubmit} style={{ display: 'grid', gap: '0.75rem' }}>

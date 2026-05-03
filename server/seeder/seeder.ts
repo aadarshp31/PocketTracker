@@ -38,15 +38,22 @@ export async function seedUsers() {
 
 export async function seedCategories() {
   try {
-    const singleCategory = await CategoryModel.findOne();
+    const existingIds = new Set(
+      (await CategoryModel.findAll({ attributes: ['id'], where: { is_default: true } }))
+        .map((c) => c.get('id') as string)
+    );
 
-    if (singleCategory) {
+    const missing = dummyDataJson.category.filter((c) => !existingIds.has(c.id));
+
+    if (missing.length === 0) {
       return;
     }
 
-    // @ts-ignore
-    await new CategoryService().createBulk(dummyDataJson.category)
-    console.log("<-------- dummy categories created successfully -------->");
+    await CategoryModel.bulkCreate(
+      missing.map((c) => ({ ...c, is_default: true })),
+      { ignoreDuplicates: true }
+    );
+    console.log(`<-------- ${missing.length} default categories added successfully >`);
   } catch (error) {
     console.info('<-------- seeder failed for categories --------> : ', error);
   }

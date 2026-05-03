@@ -7,6 +7,11 @@ interface MonthWindow {
   end: Date;
 }
 
+interface MonthRef {
+  year: number;
+  month: number;
+}
+
 function getMonthWindow(year: number, month: number): MonthWindow {
   // month is 1-12 from API
   const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
@@ -21,11 +26,62 @@ function getPreviousMonth(year: number, month: number) {
   return { year, month: month - 1 };
 }
 
+function getRecentMonths(count: number, fromYear: number, fromMonth: number): MonthRef[] {
+  const months: MonthRef[] = [];
+
+  for (let index = count - 1; index >= 0; index -= 1) {
+    const date = new Date(Date.UTC(fromYear, fromMonth - 1 - index, 1));
+    months.push({
+      year: date.getUTCFullYear(),
+      month: date.getUTCMonth() + 1,
+    });
+  }
+
+  return months;
+}
+
 function toFixed2(value: number): string {
   return value.toFixed(2);
 }
 
 export default class InsightsService {
+  async getMonthlyTrend(userId: string, months: number = 6, year?: number, month?: number) {
+    const now = new Date();
+    const targetYear = year ?? now.getUTCFullYear();
+    const targetMonth = month ?? now.getUTCMonth() + 1;
+    const safeMonths = Math.min(Math.max(months, 3), 12);
+    const monthRefs = getRecentMonths(safeMonths, targetYear, targetMonth);
+
+    const series = await Promise.all(
+      monthRefs.map(async ({ year: refYear, month: refMonth }) => {
+        const window = getMonthWindow(refYear, refMonth);
+        const totalRaw = await TransactionModel.sum("amount", {
+          where: {
+            user_id: userId,
+            type: "expense",
+            date: { [Op.between]: [window.start, window.end] }
+          }
+        });
+
+        return {
+          month: refMonth,
+          year: refYear,
+          label: new Date(Date.UTC(refYear, refMonth - 1, 1)).toLocaleString("en-US", {
+            month: "short",
+            year: "2-digit",
+            timeZone: "UTC"
+          }),
+          totalExpenses: toFixed2(Number(totalRaw || 0))
+        };
+      })
+    );
+
+    return {
+      months: safeMonths,
+      series,
+    };
+  }
+
   async getMonthlySummary(userId: string, month?: number, year?: number) {
     const now = new Date();
     const targetYear = year ?? now.getUTCFullYear();

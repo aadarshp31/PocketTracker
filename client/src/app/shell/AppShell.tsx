@@ -4,7 +4,6 @@ import { useAuth } from '../../features/auth/contexts/AuthContext'
 const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/transactions', label: 'Transactions' },
-  { to: '/settings', label: 'Settings' },
 ]
 
 export function AppShell() {
@@ -16,10 +15,16 @@ export function AppShell() {
     navigate('/auth/login')
   }
 
+  const handleProfileClick = () => {
+    navigate('/profile')
+  }
+
+  const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : ''
+
   return (
     <div className="app-shell">
       <header className="app-header">
-        <div className="app-title">PocketTracker</div>
+        <div className="app-title">🎯 PocketTracker</div>
         <nav className="app-nav" aria-label="primary navigation">
           {navItems.map((item) => (
             <NavLink
@@ -31,11 +36,19 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {user && <span style={{ fontSize: '0.9em', color: '#666' }}>{user.email}</span>}
+        <div className="nav-user-section">
+          {user && (
+            <button 
+              onClick={handleProfileClick}
+              className="profile-button"
+              title="View Profile"
+            >
+              👤 {userName}
+            </button>
+          )}
           <button 
             onClick={handleLogout}
-            style={{ padding: '8px 16px', cursor: 'pointer' }}
+            className="logout-button"
           >
             Logout
           </button>

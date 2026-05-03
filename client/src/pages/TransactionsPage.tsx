@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTransactions } from '../features/transactions/hooks/useTransactions'
 import { useCategories } from '../features/transactions/hooks/useCategories'
 import { useCreateTransaction } from '../features/transactions/hooks/useCreateTransaction'
+import { useCreateCategory } from '../features/transactions/hooks/useCreateCategory'
 import { useUpdateTransaction } from '../features/transactions/hooks/useUpdateTransaction'
 import { useDeleteTransaction } from '../features/transactions/hooks/useDeleteTransaction'
 import { useProfile } from '../features/profile/hooks/useProfile'
@@ -50,6 +51,8 @@ export function TransactionsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formError, setFormError] = useState('')
   const [formNotice, setFormNotice] = useState('')
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryError, setNewCategoryError] = useState('')
   const amountInputRef = useRef<HTMLInputElement | null>(null)
 
   const limit = 10
@@ -58,6 +61,7 @@ export function TransactionsPage() {
   const categoriesQuery = useCategories()
   const profileQuery = useProfile()
   const createMutation = useCreateTransaction()
+  const createCategoryMutation = useCreateCategory()
   const updateMutation = useUpdateTransaction()
   const deleteMutation = useDeleteTransaction()
 
@@ -68,7 +72,11 @@ export function TransactionsPage() {
   )
   const recentTransaction = query.data?.transactions?.[0] ?? null
 
-  const isMutating = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending
+  const isMutating =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending ||
+    createCategoryMutation.isPending
 
   useEffect(() => {
     if (!editingId) {
@@ -140,6 +148,40 @@ export function TransactionsPage() {
 
   async function onDelete(transactionId: string) {
     await deleteMutation.mutateAsync(transactionId)
+  }
+
+  async function onCreateCategory() {
+    const name = newCategoryName.trim()
+    if (!name) {
+      setNewCategoryError('Please enter a category name.')
+      return
+    }
+
+    const existing = categories.find(
+      (category) => category.type === form.type && category.name.toLowerCase() === name.toLowerCase()
+    )
+
+    if (existing) {
+      setForm((prev) => ({ ...prev, category_id: existing.id }))
+      setNewCategoryError('')
+      setFormNotice('Selected existing category.')
+      setNewCategoryName('')
+      return
+    }
+
+    setNewCategoryError('')
+    const created = await createCategoryMutation.mutateAsync({
+      name,
+      type: form.type,
+    })
+
+    const createdCategoryId = created.categories?.id
+    if (createdCategoryId) {
+      setForm((prev) => ({ ...prev, category_id: createdCategoryId }))
+    }
+
+    setNewCategoryName('')
+    setFormNotice(`Added ${name} category.`)
   }
 
   function applyDateShortcut(offsetDays: number) {
@@ -290,6 +332,25 @@ export function TransactionsPage() {
               <label htmlFor="txn-category">Category</label>
               <span className="muted">Tap once to keep using the same bucket for the next entries.</span>
             </div>
+            <div className="quick-category-create">
+              <input
+                id="txn-new-category"
+                type="text"
+                placeholder="Add custom category (e.g., Other)"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                disabled={isMutating}
+              />
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={onCreateCategory}
+                disabled={isMutating}
+              >
+                Add Category
+              </button>
+            </div>
+            {newCategoryError ? <p className="error quick-feedback">{newCategoryError}</p> : null}
             <div className="quick-category-list" aria-label="category shortcuts">
               {filteredCategories.map((category) => (
                 <button

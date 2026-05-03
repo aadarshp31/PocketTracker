@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { apiBaseUrl } from '../../../shared/api/http'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -10,6 +11,8 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 interface AuthUser {
   id: string
   email: string
+  firstName?: string
+  lastName?: string
 }
 
 interface AuthContextType {
@@ -37,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser({
             id: supabaseUser.id,
             email: supabaseUser.email || '',
+            firstName: supabaseUser.user_metadata?.first_name || '',
+            lastName: supabaseUser.user_metadata?.last_name || '',
           })
         }
       } catch (error) {
@@ -55,6 +60,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser({
             id: session.user.id,
             email: session.user.email || '',
+            firstName: session.user.user_metadata?.first_name || '',
+            lastName: session.user.user_metadata?.last_name || '',
           })
           // Store token in localStorage for axios interceptor
           if (session.access_token) {
@@ -106,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.user) {
         const token = await getToken()
         if (token) {
-          await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/signup`, {
+          await fetch(`${apiBaseUrl}/auth/signup`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

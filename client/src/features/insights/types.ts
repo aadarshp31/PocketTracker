@@ -20,6 +20,16 @@ export interface SummaryData {
   }
 }
 
+export interface MonthlyTrendData {
+  months: number
+  series: Array<{
+    month: number
+    year: number
+    label: string
+    totalExpenses: string
+  }>
+}
+
 export interface CategoryData {
   month: number
   year: number

@@ -12,6 +12,10 @@ async function run() {
   assert.ok(summary.previousMonth)
   assert.ok(['up', 'down', 'flat'].includes(summary.comparison.trend))
 
+  const trend = await service.getMonthlyTrend(sampleUserId, 6)
+  assert.equal(trend.series.length, 6)
+  assert.ok(typeof trend.series[0]?.totalExpenses === 'string')
+
   const categories = await service.getCategoryBreakdown(sampleUserId)
   assert.ok(Array.isArray(categories.categories))
 

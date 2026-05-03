@@ -57,6 +57,24 @@ export default class InsightsController {
     }
   }
 
+  async getMonthlyTrend(req: Request, res: Response) {
+    try {
+      const userId = await this.resolveUserId(req);
+      if (!userId) {
+        res.status(401).json({ message: "User not authenticated" });
+        return;
+      }
+
+      const months = parseOptionalInt(req.query.months);
+      const month = parseOptionalInt(req.query.month);
+      const year = parseOptionalInt(req.query.year);
+      const data = await this.insightsService.getMonthlyTrend(userId, months, year, month);
+      this.respondSuccess(res, data);
+    } catch (error: any) {
+      res.status(400).json({ message: "something went wrong", error: error.message });
+    }
+  }
+
   async getCategories(req: Request, res: Response) {
     try {
       const userId = await this.resolveUserId(req);
