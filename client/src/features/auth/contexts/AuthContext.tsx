@@ -3,10 +3,19 @@ import type { ReactNode } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { apiBaseUrl } from '../../../shared/api/http'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim()
+const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+// Validate environment variables
+if (!supabaseUrl || !supabaseKey) {
+  console.error(
+    'Missing Supabase environment variables. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.'
+  )
+}
+
+const supabase = createClient(supabaseUrl || '', supabaseKey || '')
+const emailRedirectUri =
+  (import.meta.env.VITE_AUTH_EMAIL_REDIRECT_TO || '').trim() || `${window.location.origin}/auth/login`
 
 interface AuthUser {
   id: string
@@ -107,7 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             first_name: firstName,
             last_name: lastName,
           },
-          emailRedirectTo: `${window.location.origin}/auth/confirm`,
+          emailRedirectTo: emailRedirectUri,
         },
       })
 
