@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import supabaseClient from "../config/authConfig";
+import UserModel from "../models/UserModel";
 
 declare global {
   namespace Express {
@@ -31,6 +32,38 @@ export default class Middlewares {
 
             if (error || !data.user) {
                 res.status(401).json({ message: "Invalid or expired token" });
+                return;
+            }
+
+            const email = data.user.email || "";
+            const metadata = data.user.user_metadata || {};
+            const firstName = (metadata.first_name || metadata.firstName || email.split("@")[0] || "User").toString();
+            const lastName = (metadata.last_name || metadata.lastName || "Account").toString();
+
+            // Ensure there is always an application user mapped to the Supabase user id.
+            let dbUser = await UserModel.findOne({ where: { supabase_id: data.user.id } });
+
+            if (!dbUser && email) {
+                const existingByEmail = await UserModel.findOne({ where: { email } });
+
+                if (existingByEmail) {
+                    existingByEmail.set("supabase_id", data.user.id);
+                    if (!existingByEmail.get("first_name")) existingByEmail.set("first_name", firstName);
+                    if (!existingByEmail.get("last_name")) existingByEmail.set("last_name", lastName);
+                    dbUser = await existingByEmail.save();
+                } else {
+                    dbUser = await UserModel.create({
+                        supabase_id: data.user.id,
+                        email,
+                        first_name: firstName,
+                        last_name: lastName,
+                        currency: "INR",
+                    });
+                }
+            }
+
+            if (!dbUser) {
+                res.status(500).json({ message: "Unable to initialize user profile" });
                 return;
             }
 
