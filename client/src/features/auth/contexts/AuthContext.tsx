@@ -17,6 +17,34 @@ const supabase = createClient(supabaseUrl || '', supabaseKey || '')
 const emailRedirectUri =
   (import.meta.env.VITE_AUTH_EMAIL_REDIRECT_TO || '').trim() || `${window.location.origin}/auth/login`
 
+const syncSessionCookie = async (accessToken: string | null) => {
+  if (!accessToken) return
+
+  try {
+    await fetch(`${apiBaseUrl}/auth/session`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ access_token: accessToken }),
+    })
+  } catch (error) {
+    console.error('Failed to sync auth cookie:', error)
+  }
+}
+
+const clearSessionCookie = async () => {
+  try {
+    await fetch(`${apiBaseUrl}/auth/session`, {
+      method: 'DELETE',
+      credentials: 'include',
+    })
+  } catch (error) {
+    console.error('Failed to clear auth cookie:', error)
+  }
+}
+
 interface AuthUser {
   id: string
   email: string
@@ -53,9 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             firstName: supabaseUser.user_metadata?.first_name || '',
             lastName: supabaseUser.user_metadata?.last_name || '',
           })
-          if (session?.access_token) {
-            localStorage.setItem('auth_token', session.access_token)
-          }
+          await syncSessionCookie(session?.access_token || null)
         }
       } catch (error) {
         console.error('Auth check failed:', error)
@@ -76,13 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             firstName: session.user.user_metadata?.first_name || '',
             lastName: session.user.user_metadata?.last_name || '',
           })
-          // Store token in localStorage for axios interceptor
-          if (session.access_token) {
-            localStorage.setItem('auth_token', session.access_token)
-          }
+          await syncSessionCookie(session.access_token || null)
         } else {
           setUser(null)
-          localStorage.removeItem('auth_token')
+          await clearSessionCookie()
         }
       }
     )
@@ -130,11 +153,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`,
             },
             body: JSON.stringify({
               email,
-              password,
               first_name: firstName,
               last_name: lastName,
             }),
@@ -166,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.session?.access_token) {
-        localStorage.setItem('auth_token', data.session.access_token)
+        await syncSessionCookie(data.session.access_token)
       }
     } finally {
       setIsLoading(false)
@@ -179,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
       setUser(null)
-      localStorage.removeItem('auth_token')
+      await clearSessionCookie()
     } finally {
       setIsLoading(false)
     }

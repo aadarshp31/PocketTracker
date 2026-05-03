@@ -8,6 +8,8 @@ const authRoute = express.Router();
 authRoute.post("/signup", authController.signup.bind(authController));
 authRoute.post("/signin", authController.signin.bind(authController));
 authRoute.post("/signout", authController.signout.bind(authController));
+authRoute.post("/session", authController.createSession.bind(authController));
+authRoute.delete("/session", authController.clearSession.bind(authController));
 authRoute.post("/verify", authController.verify.bind(authController));
 
 export default authRoute;

@@ -16,22 +16,34 @@ import insightsRoute from './routes/insightsRoute';
 
 const app = express();
 
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
 // allow cors
 app.use(cors({
-  origin: "*",
-  allowedHeaders: "*"
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // logger middleware setup
+const morganFormat = (process.env.MORGAN_ENV || 'combined') as string;
 if (process.env.NODE_ENV === "development") {
   // log file stream setup
   const accessLogWriteStream = fs.createWriteStream(path.join(__dirname, "..", "logs", "access.log"), { flags: "a" });
-  app.use(morgan((process.env.MORGAN_ENV as string), {
-    stream: accessLogWriteStream
-  }));
+  app.use(morgan(morganFormat, { stream: accessLogWriteStream }));
+} else {
+  app.use(morgan(morganFormat));
 }
-
-app.use(morgan((process.env.MORGAN_ENV as string)));
 
 // middlewares setup
 app.use(express.static('public'));

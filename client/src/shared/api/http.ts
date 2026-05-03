@@ -5,34 +5,6 @@ export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost
 export const http = axios.create({
   baseURL: apiBaseUrl,
   timeout: 10_000,
+  withCredentials: true,
 })
-
-// Add request interceptor to include JWT token
-http.interceptors.request.use(async (config) => {
-  // Try to get token from localStorage (set by AuthContext)
-  const token = localStorage.getItem('auth_token')
-  
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-
-  return config
-})
-
-// Add response interceptor to handle 401 errors
-http.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Do not hard-redirect on every 401. Some endpoints can return 401
-      // while the Supabase session is still valid (for example, missing backend user mapping).
-      // Let screens handle the rejected request and show actionable errors.
-      const hadAuthHeader = Boolean(error.config?.headers?.Authorization)
-      if (hadAuthHeader) {
-        localStorage.removeItem('auth_token')
-      }
-    }
-    return Promise.reject(error)
-  }
-)
 
