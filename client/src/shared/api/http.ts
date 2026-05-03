@@ -24,9 +24,13 @@ http.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear auth token and redirect to login if needed
-      localStorage.removeItem('auth_token')
-      window.location.href = '/auth/login'
+      // Do not hard-redirect on every 401. Some endpoints can return 401
+      // while the Supabase session is still valid (for example, missing backend user mapping).
+      // Let screens handle the rejected request and show actionable errors.
+      const hadAuthHeader = Boolean(error.config?.headers?.Authorization)
+      if (hadAuthHeader) {
+        localStorage.removeItem('auth_token')
+      }
     }
     return Promise.reject(error)
   }
