@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export function SignupPage() {
@@ -92,7 +92,7 @@ export function SignupPage() {
       </form>
 
       <p style={{ marginTop: '20px', textAlign: 'center' }}>
-        Already have an account? <a href="/auth/login">Sign in</a>
+        Already have an account? <Link to="/auth/login">Sign in</Link>
       </p>
     </div>
   )

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export function LoginPage() {
@@ -73,7 +73,7 @@ export function LoginPage() {
       </form>
 
       <p style={{ marginTop: '20px', textAlign: 'center' }}>
-        Don't have an account? <a href="/auth/signup">Sign up</a>
+        Don't have an account? <Link to="/auth/signup">Sign up</Link>
       </p>
     </div>
   )
