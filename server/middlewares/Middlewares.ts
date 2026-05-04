@@ -77,6 +77,7 @@ export default class Middlewares {
 
             next();
         } catch (error) {
+            console.error("verifyAuth error:", error);
             res.status(401).json({ message: "Authentication failed" });
         }
     }
