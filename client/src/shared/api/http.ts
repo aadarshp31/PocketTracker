@@ -8,6 +8,10 @@ export const http = axios.create({
   timeout: 10_000,
 })
 
+export function isMfaRequiredHttpError(error: unknown): boolean {
+  return axios.isAxiosError(error) && error.response?.status === 403 && error.response?.data?.code === 'mfa_required'
+}
+
 http.interceptors.request.use(async (config) => {
   try {
     const { data: { session } } = await supabase.auth.getSession()
@@ -19,4 +23,15 @@ http.interceptors.request.use(async (config) => {
   }
   return config
 })
+
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (isMfaRequiredHttpError(error)) {
+      error.message = 'Complete two-factor verification before accessing protected data.'
+    }
+
+    return Promise.reject(error)
+  }
+)
 

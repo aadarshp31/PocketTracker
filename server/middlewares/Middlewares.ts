@@ -2,6 +2,20 @@ import { NextFunction, Request, Response } from "express";
 import supabaseClient from "../config/authConfig";
 import UserModel from "../models/UserModel";
 
+function getAalFromToken(token: string): string | null {
+    try {
+        const [, payload] = token.split('.');
+        if (!payload) return null;
+
+        const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+        const decoded = Buffer.from(normalized, 'base64').toString('utf8');
+        const parsed = JSON.parse(decoded) as { aal?: string };
+        return parsed.aal || null;
+    } catch {
+        return null;
+    }
+}
+
 declare global {
   namespace Express {
     interface Request {
@@ -64,6 +78,15 @@ export default class Middlewares {
 
             if (!dbUser) {
                 res.status(500).json({ message: "Unable to initialize user profile" });
+                return;
+            }
+
+            const factorResponse = await supabaseClient.auth.admin.mfa.listFactors({ userId: data.user.id });
+            const verifiedFactors = (factorResponse.data?.factors || []).filter((factor) => factor.status === 'verified');
+            const aal = getAalFromToken(token);
+
+            if (verifiedFactors.length > 0 && aal !== 'aal2') {
+                res.status(403).json({ message: 'Multi-factor authentication required', code: 'mfa_required' });
                 return;
             }
 
