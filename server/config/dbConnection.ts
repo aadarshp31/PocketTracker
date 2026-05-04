@@ -15,8 +15,11 @@ export async function connectToRelationalDatabase() {
     if(process.env.NODE_ENV === "development") {
       const shouldDrop = process.env.SYNC_SHOULD_DROP_DB ? Boolean(process.env.SYNC_SHOULD_DROP_DB) : false;
       await sequelize.sync({ force: shouldDrop, alter: !shouldDrop }); // force drops+recreates; alter updates columns
-      console.log('Database synced successfully.');
+    } else {
+      // In production: create tables if they don't exist, never drop or alter
+      await sequelize.sync({ force: false });
     }
+    console.log('Database synced successfully.');
     
     await sequelize.authenticate();
     console.log('Database connected successfully!');
