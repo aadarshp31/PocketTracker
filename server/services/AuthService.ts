@@ -74,8 +74,4 @@ export default class AuthService {
             return null;
         }
     }
-
-    async getAuthUser(token: string) {
-        return await supabaseClient.auth.getUser(token);
-    }
 }

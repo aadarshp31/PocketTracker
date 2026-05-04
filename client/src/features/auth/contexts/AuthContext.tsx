@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { apiBaseUrl } from '../../../shared/api/http'
+import { apiBaseUrl, setAuthToken } from '../../../shared/api/http'
 
 const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim()
 const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
@@ -16,34 +16,6 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl || '', supabaseKey || '')
 const emailRedirectUri =
   (import.meta.env.VITE_AUTH_EMAIL_REDIRECT_TO || '').trim() || `${window.location.origin}/auth/login`
-
-const syncSessionCookie = async (accessToken: string | null) => {
-  if (!accessToken) return
-
-  try {
-    await fetch(`${apiBaseUrl}/auth/session`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ access_token: accessToken }),
-    })
-  } catch (error) {
-    console.error('Failed to sync auth cookie:', error)
-  }
-}
-
-const clearSessionCookie = async () => {
-  try {
-    await fetch(`${apiBaseUrl}/auth/session`, {
-      method: 'DELETE',
-      credentials: 'include',
-    })
-  } catch (error) {
-    console.error('Failed to clear auth cookie:', error)
-  }
-}
 
 interface AuthUser {
   id: string
@@ -81,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             firstName: supabaseUser.user_metadata?.first_name || '',
             lastName: supabaseUser.user_metadata?.last_name || '',
           })
-          await syncSessionCookie(session?.access_token || null)
+          setAuthToken(session?.access_token || null)
         }
       } catch (error) {
         console.error('Auth check failed:', error)
@@ -102,10 +74,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             firstName: session.user.user_metadata?.first_name || '',
             lastName: session.user.user_metadata?.last_name || '',
           })
-          await syncSessionCookie(session.access_token || null)
+          setAuthToken(session.access_token || null)
         } else {
           setUser(null)
-          await clearSessionCookie()
+          setAuthToken(null)
         }
       }
     )
@@ -187,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data.session?.access_token) {
-        await syncSessionCookie(data.session.access_token)
+        setAuthToken(data.session.access_token)
       }
     } finally {
       setIsLoading(false)
@@ -200,7 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
       setUser(null)
-      await clearSessionCookie()
+      setAuthToken(null)
     } finally {
       setIsLoading(false)
     }

@@ -16,23 +16,10 @@ import insightsRoute from './routes/insightsRoute';
 
 const app = express();
 
-const allowedOrigins = (process.env.CORS_ORIGIN || '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean)
-
 // allow cors
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
-    }
-
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: '*',
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 // logger middleware setup

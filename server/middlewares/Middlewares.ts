@@ -2,20 +2,6 @@ import { NextFunction, Request, Response } from "express";
 import supabaseClient from "../config/authConfig";
 import UserModel from "../models/UserModel";
 
-function getCookieValue(cookieHeader: string | undefined, name: string): string | null {
-    if (!cookieHeader) return null;
-
-    const cookies = cookieHeader.split(';');
-    for (const rawCookie of cookies) {
-        const [rawKey, ...rawValueParts] = rawCookie.trim().split('=');
-        if (rawKey === name) {
-            return decodeURIComponent(rawValueParts.join('='));
-        }
-    }
-
-    return null;
-}
-
 declare global {
   namespace Express {
     interface Request {
@@ -34,16 +20,13 @@ export default class Middlewares {
     static async verifyAuth(req: Request, res: Response, next: NextFunction) {
         try {
             const authHeader = req.headers.authorization;
-            const cookieToken = getCookieValue(req.headers.cookie, 'pt_auth_token');
-            const bearerToken = authHeader && authHeader.startsWith("Bearer ")
-                ? authHeader.substring(7)
-                : null;
-            const token = bearerToken || cookieToken;
 
-            if (!token) {
-                res.status(401).json({ message: "Missing auth token" });
+            if (!authHeader || !authHeader.startsWith("Bearer ")) {
+                res.status(401).json({ message: "Missing or invalid authorization header" });
                 return;
             }
+
+            const token = authHeader.substring(7);
 
             const { data, error } = await supabaseClient.auth.getUser(token);
 
