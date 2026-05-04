@@ -1,19 +1,8 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { createClient } from '@supabase/supabase-js'
-import { apiBaseUrl, setAuthToken } from '../../../shared/api/http'
+import { supabase } from '../../../shared/api/supabaseClient'
+import { apiBaseUrl } from '../../../shared/api/http'
 
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim()
-const supabaseKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
-
-// Validate environment variables
-if (!supabaseUrl || !supabaseKey) {
-  console.error(
-    'Missing Supabase environment variables. Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.'
-  )
-}
-
-const supabase = createClient(supabaseUrl || '', supabaseKey || '')
 const emailRedirectUri =
   (import.meta.env.VITE_AUTH_EMAIL_REDIRECT_TO || '').trim() || `${window.location.origin}/auth/login`
 
@@ -44,16 +33,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check if user is already logged in
     const checkAuth = async () => {
       try {
-        const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+        // getSession() auto-refreshes the token if expired, unlike getUser()
         const { data: { session } } = await supabase.auth.getSession()
-        if (supabaseUser) {
+        if (session?.user) {
           setUser({
-            id: supabaseUser.id,
-            email: supabaseUser.email || '',
-            firstName: supabaseUser.user_metadata?.first_name || '',
-            lastName: supabaseUser.user_metadata?.last_name || '',
+            id: session.user.id,
+            email: session.user.email || '',
+            firstName: session.user.user_metadata?.first_name || '',
+            lastName: session.user.user_metadata?.last_name || '',
           })
-          setAuthToken(session?.access_token || null)
         }
       } catch (error) {
         console.error('Auth check failed:', error)
@@ -66,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         if (session?.user) {
           setUser({
             id: session.user.id,
@@ -74,10 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             firstName: session.user.user_metadata?.first_name || '',
             lastName: session.user.user_metadata?.last_name || '',
           })
-          setAuthToken(session.access_token || null)
         } else {
           setUser(null)
-          setAuthToken(null)
         }
       }
     )
@@ -157,10 +143,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           lastName: data.user.user_metadata?.last_name || '',
         })
       }
-
-      if (data.session?.access_token) {
-        setAuthToken(data.session.access_token)
-      }
     } finally {
       setIsLoading(false)
     }
@@ -172,7 +154,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
       setUser(null)
-      setAuthToken(null)
     } finally {
       setIsLoading(false)
     }

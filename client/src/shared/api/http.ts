@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { supabase } from './supabaseClient'
 
 export const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5001/api'
 
@@ -7,15 +8,14 @@ export const http = axios.create({
   timeout: 10_000,
 })
 
-let _authToken: string | null = null
-
-export function setAuthToken(token: string | null) {
-  _authToken = token
-}
-
-http.interceptors.request.use((config) => {
-  if (_authToken) {
-    config.headers.Authorization = `Bearer ${_authToken}`
+http.interceptors.request.use(async (config) => {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      config.headers.Authorization = `Bearer ${session.access_token}`
+    }
+  } catch {
+    // Proceed without auth header; the server will return 401 if required
   }
   return config
 })
