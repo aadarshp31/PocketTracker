@@ -67,6 +67,9 @@ interface AuthContextType {
   getToken: () => Promise<string | null>
   resetPassword: (email: string) => Promise<void>
   updatePassword: (newPassword: string) => Promise<void>
+  generateRecoveryCodes: () => Promise<string[]>
+  getRecoveryCodesStatus: () => Promise<{ total: number; remaining: number }>
+  verifyRecoveryCode: (code: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -325,6 +328,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await refreshMfaState()
   }
 
+  const generateRecoveryCodes = async (): Promise<string[]> => {
+    const token = await getToken()
+    if (!token) throw new Error('Not authenticated')
+
+    const response = await fetch(`${apiBaseUrl}/auth/recovery-codes/generate`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new Error((body as { message?: string }).message || 'Failed to generate recovery codes')
+    }
+
+    const data = await response.json() as { codes: string[] }
+    return data.codes
+  }
+
+  const getRecoveryCodesStatus = async (): Promise<{ total: number; remaining: number }> => {
+    const token = await getToken()
+    if (!token) throw new Error('Not authenticated')
+
+    const response = await fetch(`${apiBaseUrl}/auth/recovery-codes/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch recovery code status')
+    }
+
+    return response.json() as Promise<{ total: number; remaining: number }>
+  }
+
+  const verifyRecoveryCode = async (code: string): Promise<void> => {
+    const token = await getToken()
+    if (!token) throw new Error('Not authenticated')
+
+    const response = await fetch(`${apiBaseUrl}/auth/recovery-codes/use`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ code }),
+    })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      throw new Error((body as { message?: string }).message || 'Invalid or already-used recovery code')
+    }
+
+    // Supabase session is still aal1; refresh so downstream state reflects no MFA factors
+    await supabase.auth.refreshSession()
+    await refreshMfaState()
+  }
+
   const signOut = async () => {
     setIsLoading(true)
     try {
@@ -373,6 +432,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         getToken,
         resetPassword,
         updatePassword,
+        generateRecoveryCodes,
+        getRecoveryCodesStatus,
+        verifyRecoveryCode
       }}
     >
       {children}

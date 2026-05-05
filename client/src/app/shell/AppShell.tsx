@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../features/auth/contexts/AuthContext'
 import { MFA_REQUIRED_EVENT, type MfaRequiredEventDetail } from '../../shared/api/http'
@@ -11,6 +11,9 @@ const navItems = [
 export function AppShell() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const [showRecoveryBanner, setShowRecoveryBanner] = useState(() => {
+    return sessionStorage.getItem('pt:recovery_used') === '1'
+  })
 
   useEffect(() => {
     const handleMfaRequired = (event: Event) => {
@@ -74,6 +77,35 @@ export function AppShell() {
         </div>
       </header>
       <main className="app-main">
+        {showRecoveryBanner ? (
+          <div role="alert" style={{
+            background: '#fef3c7',
+            borderBottom: '1px solid #f59e0b',
+            padding: '0.75rem 1rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '1rem',
+            fontSize: '0.9rem',
+          }}>
+            <span>
+              <strong>Action required:</strong> You signed in with a recovery code. Your previous authenticator has been
+              removed. <button
+                type="button"
+                onClick={() => navigate('/profile')}
+                style={{ background: 'none', border: 'none', color: '#92400e', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+              >Set up a new authenticator</button> to re-enable two-factor authentication.
+            </span>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => { sessionStorage.removeItem('pt:recovery_used'); setShowRecoveryBanner(false); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, color: '#92400e' }}
+            >
+              &times;
+            </button>
+          </div>
+        ) : null}
         <Outlet />
       </main>
     </div>

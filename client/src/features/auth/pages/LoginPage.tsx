@@ -10,6 +10,8 @@ export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [mfaCode, setMfaCode] = useState('')
+  const [recoveryCode, setRecoveryCode] = useState('')
+  const [showRecovery, setShowRecovery] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   
@@ -20,6 +22,7 @@ export function LoginPage() {
     pendingMfaFactors,
     selectPendingMfaFactor,
     verifyMfaSignIn,
+    verifyRecoveryCode,
   } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -71,6 +74,24 @@ export function LoginPage() {
       navigate(redirectTo, { replace: true })
     } catch (error) {
       setError(getErrorMessage(error, 'Failed to verify authenticator code'))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleRecoverySubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setInfo('')
+    setIsLoading(true)
+
+    try {
+      await verifyRecoveryCode(recoveryCode.trim())
+      // Flag for AppShell to show re-enrollment banner
+      sessionStorage.setItem('pt:recovery_used', '1')
+      navigate(redirectTo, { replace: true })
+    } catch (error) {
+      setError(getErrorMessage(error, 'Invalid or already-used recovery code'))
     } finally {
       setIsLoading(false)
     }
@@ -135,6 +156,69 @@ export function LoginPage() {
             {isLoading ? 'Verifying...' : 'Verify Code'}
           </button>
         </form>
+
+        <div style={{ marginTop: '20px', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => { setShowRecovery(true); setError(''); setInfo(''); }}
+            disabled={isLoading}
+            style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}
+          >
+            Lost your phone? Use a recovery code
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (isMfaRequired && showRecovery) {
+    return (
+      <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
+        <h1>Account Recovery</h1>
+        <p>Enter one of your saved recovery codes to regain access.</p>
+        <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+          Warning: using a recovery code will remove all authenticators from your account.
+          You will need to set up a new authenticator after signing in.
+        </p>
+
+        {info ? <div style={{ color: '#2563eb', marginBottom: '15px' }}>{info}</div> : null}
+
+        <form onSubmit={handleRecoverySubmit}>
+          <div style={{ marginBottom: '15px' }}>
+            <label>Recovery Code:</label>
+            <input
+              type="text"
+              placeholder="xxxx-xxxx-xxxx-xxxx"
+              value={recoveryCode}
+              onChange={(e) => setRecoveryCode(e.target.value)}
+              required
+              disabled={isLoading}
+              autoComplete="off"
+              style={{ width: '100%', padding: '8px', fontFamily: 'monospace' }}
+            />
+          </div>
+
+          {error && <div style={{ color: 'red', marginBottom: '15px' }}>{error}</div>}
+
+          <button
+            type="submit"
+            disabled={isLoading || recoveryCode.trim().length === 0}
+            style={{ width: '100%', padding: '10px', cursor: 'pointer' }}
+          >
+            {isLoading ? 'Verifying...' : 'Use Recovery Code'}
+          </button>
+        </form>
+
+        <div style={{ marginTop: '15px', textAlign: 'center' }}>
+          <button
+            type="button"
+            onClick={() => { setShowRecovery(false); setError(''); }}
+            disabled={isLoading}
+            style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}
+          >
+            Back to authenticator code
+          </button>
+        </div>
       </div>
     )
   }
