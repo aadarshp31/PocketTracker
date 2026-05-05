@@ -165,6 +165,9 @@ export function LoginPage() {
             disabled={isLoading}
             style={{ width: '100%', padding: '8px' }}
           />
+          <div style={{ textAlign: 'right', marginTop: '4px' }}>
+            <Link to="/auth/forgot-password" style={{ fontSize: '0.875rem' }}>Forgot password?</Link>
+          </div>
         </div>
 
   {info && <div style={{ color: '#2563eb', marginBottom: '15px' }}>{info}</div>}

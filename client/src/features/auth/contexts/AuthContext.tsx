@@ -25,6 +25,9 @@ function buildBrandedTotpUri(rawUri: string, fallbackLabel: string) {
   return `${prefix.split('/').slice(0, 3).join('/')}/${encodedPath}?${params.toString()}`
 }
 
+const passwordResetRedirectUri =
+  (import.meta.env.VITE_AUTH_PASSWORD_RESET_REDIRECT_TO || '').trim() || `${window.location.origin}/auth/reset-password`
+
 interface AuthUser {
   id: string
   email: string
@@ -62,6 +65,8 @@ interface AuthContextType {
   refreshMfaState: () => Promise<void>
   signOut: () => Promise<void>
   getToken: () => Promise<string | null>
+  resetPassword: (email: string) => Promise<void>
+  updatePassword: (newPassword: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -144,12 +149,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        window.setTimeout(() => {
-          void syncSessionState(session).catch((error) => {
-            console.error('Auth state sync failed:', error)
+      (event, session) => {
+        // Do not grant full app access during a password recovery session.
+        // The user must complete the reset form first.
+        if (event === 'PASSWORD_RECOVERY') return;
+
+        if (session?.user) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            firstName: session.user.user_metadata?.first_name || '',
+            lastName: session.user.user_metadata?.last_name || '',
           })
-        }, 0)
+		    }
       }
     )
 
@@ -326,6 +338,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: passwordResetRedirectUri,
+    })
+    if (error) throw error
+  }
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) throw error
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -347,6 +371,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshMfaState,
         signOut,
         getToken,
+        resetPassword,
+        updatePassword,
       }}
     >
       {children}

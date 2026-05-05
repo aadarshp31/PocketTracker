@@ -9,6 +9,8 @@ const TransactionsPage = lazy(() => import('../pages/TransactionsPage').then((mo
 const BulkImportPage = lazy(() => import('../features/transactions/pages/BulkImportPage').then((module) => ({ default: module.default })))
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage').then((module) => ({ default: module.LoginPage })))
 const SignupPage = lazy(() => import('../features/auth/pages/SignupPage').then((module) => ({ default: module.SignupPage })))
+const ForgotPasswordPage = lazy(() => import('../features/auth/pages/ForgotPasswordPage').then((module) => ({ default: module.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import('../features/auth/pages/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })))
 
 function RouteLoader({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<div style={{ padding: '2rem' }}>Loading...</div>}>{children}</Suspense>
@@ -21,6 +23,8 @@ export const router = createBrowserRouter([
       { path: 'login', element: <RouteLoader><LoginPage /></RouteLoader> },
       { path: 'signup', element: <RouteLoader><SignupPage /></RouteLoader> },
       { path: 'check-email', element: <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}><h1>Check Your Email</h1><p>Please check your email to confirm your account.</p></div> },
+      { path: 'forgot-password', element: <RouteLoader><ForgotPasswordPage /></RouteLoader> },
+      { path: 'reset-password', element: <RouteLoader><ResetPasswordPage /></RouteLoader> },
     ],
   },
   {
