@@ -1,6 +1,36 @@
 import { Op, Order } from "sequelize";
 import TransactionModel from "../models/TransactionModel";
 import Transaction from "../interfaces/Transaction";
+import CategorizationService from "./CategorizationService";
+import DuplicateDetectionService, { TransactionWithDuplicates } from "./DuplicateDetectionService";
+
+export interface BulkCreatePayload {
+  amount: number;
+  type: "income" | "expense";
+  description: string;
+  date: string;
+  category_id?: string;
+}
+
+export interface BulkCreateResponse {
+  created: Array<{ id: string; amount: number; description: string; date: string }>;
+  failed: Array<{ index: number; amount: number; description: string; error: string }>;
+  total: number;
+}
+
+export interface BulkCreateWithPreviewResponse {
+  transactions: Array<{
+    index: number;
+    amount: number;
+    description: string;
+    date: string;
+    type: "income" | "expense";
+    category_id: string;
+  }>;
+  duplicates: TransactionWithDuplicates[];
+  categorizedCount: number;
+  flaggedDuplicateCount: number;
+}
 
 export default class TransactionService {
 
@@ -125,5 +155,136 @@ export default class TransactionService {
 
     const createdRecords = await TransactionModel.bulkCreate(records);
     return { transactions: createdRecords };
+  }
+
+  /**
+   * Create bulk transactions with categorization and duplicate detection
+   * This is the main endpoint for importing statements/bulk entries
+   */
+  async createBulkWithCategorization(
+    transactions: BulkCreatePayload[],
+    userId: string
+  ): Promise<BulkCreateResponse> {
+    const categorizationService = new CategorizationService();
+    await categorizationService.loadCategoriesFromDatabase();
+
+    const created: Array<{ id: string; amount: number; description: string; date: string }> = [];
+    const failed: Array<{ index: number; amount: number; description: string; error: string }> = [];
+
+    for (let index = 0; index < transactions.length; index++) {
+      try {
+        const tx = transactions[index];
+
+        // Auto-categorize if category_id not provided
+        let categoryId = tx.category_id;
+        if (!categoryId) {
+          categoryId = await categorizationService.categorizTransaction(
+            tx.description,
+            tx.type,
+            userId
+          );
+        }
+
+        if (!categoryId) {
+          throw new Error("Failed to determine category for transaction");
+        }
+
+        // Create transaction
+        const createdTx = await TransactionModel.create({
+          amount: tx.amount,
+          type: tx.type,
+          description: tx.description,
+          user_id: userId,
+          category_id: categoryId,
+          date: tx.date,
+        });
+
+        created.push({
+          id: createdTx.get("id") as string,
+          amount: tx.amount,
+          description: tx.description,
+          date: tx.date,
+        });
+      } catch (error) {
+        failed.push({
+          index,
+          amount: transactions[index].amount,
+          description: transactions[index].description,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
+    }
+
+    return {
+      created,
+      failed,
+      total: transactions.length,
+    };
+  }
+
+  /**
+   * Preview bulk import with categorization and duplicate detection
+   * Returns categorized transactions and potential duplicates without creating them
+   */
+  async previewBulkImport(
+    transactions: BulkCreatePayload[],
+    userId: string
+  ): Promise<BulkCreateWithPreviewResponse> {
+    const categorizationService = new CategorizationService();
+    await categorizationService.loadCategoriesFromDatabase();
+
+    const categorizedTransactions: Array<{
+      index: number;
+      amount: number;
+      description: string;
+      date: string;
+      type: "income" | "expense";
+      category_id: string;
+    }> = [];
+
+    // Categorize all transactions
+    for (let index = 0; index < transactions.length; index++) {
+      const tx = transactions[index];
+
+      let categoryId = tx.category_id;
+      if (!categoryId) {
+        categoryId = await categorizationService.categorizTransaction(
+          tx.description,
+          tx.type,
+          userId
+        );
+      }
+
+      if (categoryId) {
+        categorizedTransactions.push({
+          index,
+          amount: tx.amount,
+          description: tx.description,
+          date: tx.date,
+          type: tx.type,
+          category_id: categoryId,
+        });
+      }
+    }
+
+    // Detect duplicates
+    const duplicateDetection = await DuplicateDetectionService.detectDuplicates(
+      transactions.map((tx) => ({
+        amount: tx.amount,
+        description: tx.description,
+        date: tx.date,
+        type: tx.type,
+      })),
+      userId
+    );
+
+    const flaggedDuplicates = duplicateDetection.filter((dup) => dup.potentialMatches.length > 0);
+
+    return {
+      transactions: categorizedTransactions,
+      duplicates: duplicateDetection,
+      categorizedCount: categorizedTransactions.length,
+      flaggedDuplicateCount: flaggedDuplicates.length,
+    };
   }
 }

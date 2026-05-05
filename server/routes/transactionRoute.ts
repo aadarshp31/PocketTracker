@@ -6,6 +6,11 @@ import TransactionService from '../services/TransactionService';
 const transactionRoute = express.Router();
 const transactionController = new TransactionController(new TransactionService(), new UserService());
 
+// Bulk import routes MUST come before param middleware to avoid conflict
+transactionRoute.post("/bulk/preview", transactionController.bulkCreatePreview.bind(transactionController));
+transactionRoute.post("/bulk", transactionController.bulkCreate.bind(transactionController));
+
+// Standard transaction routes
 transactionRoute.param("transactionId", transactionController.getById.bind(transactionController));
 
 transactionRoute.get("/:transactionId", transactionController.getOne.bind(transactionController));
