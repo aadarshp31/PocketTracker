@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../features/auth/contexts/AuthContext'
+import { MFA_REQUIRED_EVENT, type MfaRequiredEventDetail } from '../../shared/api/http'
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
@@ -9,6 +11,21 @@ const navItems = [
 export function AppShell() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
+  const [mfaBannerMessage, setMfaBannerMessage] = useState('')
+
+  useEffect(() => {
+    const handleMfaRequired = (event: Event) => {
+      const customEvent = event as CustomEvent<MfaRequiredEventDetail>
+      const redirectTo = customEvent.detail?.redirectTo || '/dashboard'
+      const safeRedirect = redirectTo.startsWith('/') && !redirectTo.startsWith('//') ? redirectTo : '/dashboard'
+
+      setMfaBannerMessage(customEvent.detail?.message || 'Additional verification is required.')
+      navigate(`/auth/login?redirect=${encodeURIComponent(safeRedirect)}`, { replace: true })
+    }
+
+    window.addEventListener(MFA_REQUIRED_EVENT, handleMfaRequired)
+    return () => window.removeEventListener(MFA_REQUIRED_EVENT, handleMfaRequired)
+  }, [navigate])
 
   const handleLogout = async () => {
     await signOut()
@@ -55,6 +72,20 @@ export function AppShell() {
         </div>
       </header>
       <main className="app-main">
+        {mfaBannerMessage ? (
+          <div
+            role="status"
+            style={{
+              marginBottom: '1rem',
+              padding: '0.75rem 1rem',
+              border: '1px solid #93c5fd',
+              background: '#eff6ff',
+              color: '#1d4ed8',
+            }}
+          >
+            {mfaBannerMessage}
+          </div>
+        ) : null}
         <Outlet />
       </main>
     </div>
