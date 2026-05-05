@@ -10,7 +10,7 @@ export function ProfilePage() {
   const updateProfile = useUpdateProfile()
   const { mfaFactors, enrollMfa, verifyMfaEnrollment, removeMfaFactor, refreshMfaState } = useAuth()
   const [currency, setCurrency] = useState('INR')
-  const [mfaFriendlyName, setMfaFriendlyName] = useState('Authenticator App')
+  const [mfaFriendlyName, setMfaFriendlyName] = useState('PocketTracker')
   const [mfaCode, setMfaCode] = useState('')
   const [mfaError, setMfaError] = useState('')
   const [mfaSuccess, setMfaSuccess] = useState('')
