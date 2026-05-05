@@ -105,6 +105,41 @@ export default class Middlewares {
         }
     }
 
+    /**
+     * Like verifyAuth but does NOT enforce aal2. Used exclusively on the recovery-code
+     * /use endpoint, where the session is intentionally aal1 (password-only).
+     */
+    static async verifyAal1Auth(req: Request, res: Response, next: NextFunction) {
+        try {
+            const authHeader = req.headers.authorization;
+
+            if (!authHeader || !authHeader.startsWith("Bearer ")) {
+                res.status(401).json({ message: "Missing or invalid authorization header" });
+                return;
+            }
+
+            const token = authHeader.substring(7);
+            const { data, error } = await supabaseClient.auth.getUser(token);
+
+            if (error || !data.user) {
+                res.status(401).json({ message: "Invalid or expired token" });
+                return;
+            }
+
+            req.user = {
+                id: data.user.id,
+                email: data.user.email || "",
+                first_name: data.user.user_metadata?.first_name,
+                last_name: data.user.user_metadata?.last_name,
+            };
+
+            next();
+        } catch (error) {
+            console.error("verifyAal1Auth error:", error);
+            res.status(401).json({ message: "Authentication failed" });
+        }
+    }
+
     static async notFound(req: Request, res: Response, next: NextFunction) {
         res.status(404).json({ message: 'Not Found' });
     }

@@ -8,7 +8,7 @@ const currencyOptions = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD', 'JPY']
 export function ProfilePage() {
   const profileQuery = useProfile()
   const updateProfile = useUpdateProfile()
-  const { mfaFactors, enrollMfa, verifyMfaEnrollment, removeMfaFactor, refreshMfaState } = useAuth()
+  const { mfaFactors, enrollMfa, verifyMfaEnrollment, removeMfaFactor, refreshMfaState, generateRecoveryCodes, getRecoveryCodesStatus } = useAuth()
   const [currency, setCurrency] = useState('INR')
   const [mfaFriendlyName, setMfaFriendlyName] = useState('PocketTracker')
   const [mfaCode, setMfaCode] = useState('')
@@ -21,6 +21,13 @@ export function ProfilePage() {
     secret: string
     uri: string
   } | null>(null)
+  // Recovery codes
+  const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[]>([])
+  const [recoverySaved, setRecoverySaved] = useState(false)
+  const [recoveryStatus, setRecoveryStatus] = useState<{ total: number; remaining: number } | null>(null)
+  const [recoveryBusy, setRecoveryBusy] = useState(false)
+  const [recoveryError, setRecoveryError] = useState('')
+  const [showRegenerateWarning, setShowRegenerateWarning] = useState(false)
 
   const profile = profileQuery.data?.users?.[0]
 
@@ -35,6 +42,14 @@ export function ProfilePage() {
       // Profile page still works even if MFA state refresh fails.
     })
   }, [])
+
+  useEffect(() => {
+    if (mfaFactors.length > 0) {
+      void getRecoveryCodesStatus().then(setRecoveryStatus).catch(() => null)
+    } else {
+      setRecoveryStatus(null)
+    }
+  }, [mfaFactors.length])
 
   if (profileQuery.isLoading) {
     return (
@@ -87,6 +102,16 @@ export function ProfilePage() {
       setPendingEnrollment(null)
       setMfaCode('')
       setMfaSuccess('Two-factor authentication is enabled for your account.')
+      // Auto-generate recovery codes immediately after enrollment
+      try {
+        const codes = await generateRecoveryCodes()
+        setNewRecoveryCodes(codes)
+        setRecoverySaved(false)
+        void getRecoveryCodesStatus().then(setRecoveryStatus).catch(() => null)
+      } catch {
+        // Recovery code generation failure is non-fatal
+        setMfaError('Authenticator enabled, but recovery codes could not be generated. Try regenerating from the Recovery Codes section.')
+      }
     } catch (error: any) {
       setMfaError(error.message || 'Failed to verify authenticator code.')
     } finally {
@@ -102,10 +127,28 @@ export function ProfilePage() {
     try {
       await removeMfaFactor(factorId)
       setMfaSuccess('Authenticator removed from your account.')
+      setRecoveryStatus(null)
     } catch (error: any) {
       setMfaError(error.message || 'Failed to remove authenticator.')
     } finally {
       setIsMfaBusy(false)
+    }
+  }
+
+  async function onRegenerateRecoveryCodes() {
+    setRecoveryError('')
+    setRecoveryBusy(true)
+    setShowRegenerateWarning(false)
+
+    try {
+      const codes = await generateRecoveryCodes()
+      setNewRecoveryCodes(codes)
+      setRecoverySaved(false)
+      void getRecoveryCodesStatus().then(setRecoveryStatus).catch(() => null)
+    } catch (error: any) {
+      setRecoveryError(error.message || 'Failed to regenerate recovery codes.')
+    } finally {
+      setRecoveryBusy(false)
     }
   }
 
@@ -254,6 +297,94 @@ export function ProfilePage() {
           </div>
         ) : null}
       </div>
+
+      {/* Recovery codes section — only shown when MFA is enrolled */}
+      {mfaFactors.length > 0 ? (
+        <div className="table-wrap" style={{ padding: '1rem', maxWidth: '720px', marginTop: '1rem' }}>
+          <h2 style={{ marginTop: 0 }}>Recovery Codes</h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Recovery codes let you access your account if you lose your authenticator device.
+            Each code can only be used once.
+          </p>
+
+          {recoveryError ? <p className="error">{recoveryError}</p> : null}
+
+          {/* Status indicator */}
+          {recoveryStatus && newRecoveryCodes.length === 0 ? (
+            <p>
+              <strong>{recoveryStatus.remaining}</strong> of {recoveryStatus.total} codes remaining.
+              {recoveryStatus.remaining <= 3 ? (
+                <span style={{ color: '#dc2626' }}> Running low — consider regenerating.</span>
+              ) : null}
+            </p>
+          ) : null}
+
+          {/* Show newly generated codes (after enrollment or regeneration) */}
+          {newRecoveryCodes.length > 0 ? (
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              <p style={{ margin: 0, color: '#dc2626', fontWeight: 500 }}>
+                Save these codes somewhere safe. They will not be shown again.
+              </p>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.4rem',
+                padding: '1rem',
+                background: 'var(--color-surface, #f9f9f9)',
+                border: '1px solid var(--color-border, #ddd)',
+                fontFamily: 'monospace',
+                fontSize: '0.9rem',
+              }}>
+                {newRecoveryCodes.map((code) => (
+                  <span key={code}>{code}</span>
+                ))}
+              </div>
+              <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={recoverySaved}
+                  onChange={(e) => setRecoverySaved(e.target.checked)}
+                />
+                I have saved these recovery codes in a secure place.
+              </label>
+              <button
+                type="button"
+                disabled={!recoverySaved}
+                onClick={() => setNewRecoveryCodes([])}
+                style={{ maxWidth: '200px' }}
+              >
+                Done
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '0.5rem', maxWidth: '260px' }}>
+              {showRegenerateWarning ? (
+                <>
+                  <p style={{ margin: 0, color: '#dc2626', fontSize: '0.9rem' }}>
+                    This will invalidate all existing codes. Continue?
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" disabled={recoveryBusy} onClick={() => void onRegenerateRecoveryCodes()}>
+                      {recoveryBusy ? 'Regenerating...' : 'Yes, regenerate'}
+                    </button>
+                    <button type="button" disabled={recoveryBusy} onClick={() => setShowRegenerateWarning(false)}>
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  disabled={recoveryBusy}
+                  onClick={() => setShowRegenerateWarning(true)}
+                >
+                  Regenerate Recovery Codes
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      ) : null}
     </section>
   )
 }

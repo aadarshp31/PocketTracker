@@ -13,6 +13,8 @@ import Middlewares from './middlewares/Middlewares';
 import budgetRoute from './routes/budgetRoute';
 import authRoute from './routes/AuthRoutes';
 import insightsRoute from './routes/insightsRoute';
+import recoveryCodeRoute from './routes/recoveryCodeRoute';
+import './models/MfaRecoveryCodeModel'; // ensure table is created on sync
 
 const app = express();
 
@@ -50,6 +52,9 @@ app.get('/api/', async (req: Request, res: Response) => {
 
 // auth endpoints (no authentication required)
 app.use('/api/auth', authRoute);
+
+// Recovery code endpoints — mixed auth (aal1 for /use, aal2 for /generate and /status)
+app.use('/api/auth/recovery-codes', recoveryCodeRoute);
 
 // Protected routes - apply JWT verification middleware
 app.use('/api/users', Middlewares.verifyAuth, userRoute);
