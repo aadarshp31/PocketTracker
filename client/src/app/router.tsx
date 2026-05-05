@@ -6,6 +6,7 @@ import { ProtectedRoute } from '../features/auth/components/ProtectedRoute'
 const DashboardPage = lazy(() => import('../pages/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const ProfilePage = lazy(() => import('../pages/SettingsPage').then((module) => ({ default: module.ProfilePage })))
 const TransactionsPage = lazy(() => import('../pages/TransactionsPage').then((module) => ({ default: module.TransactionsPage })))
+const BulkImportPage = lazy(() => import('../features/transactions/pages/BulkImportPage').then((module) => ({ default: module.default })))
 const LoginPage = lazy(() => import('../features/auth/pages/LoginPage').then((module) => ({ default: module.LoginPage })))
 const SignupPage = lazy(() => import('../features/auth/pages/SignupPage').then((module) => ({ default: module.SignupPage })))
 
@@ -34,7 +35,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <RouteLoader><DashboardPage /></RouteLoader> },
       { path: 'profile', element: <RouteLoader><ProfilePage /></RouteLoader> },
       { path: 'transactions', element: <RouteLoader><TransactionsPage /></RouteLoader> },
+      { path: 'transactions/bulk-import', element: <RouteLoader><BulkImportPage /></RouteLoader> },
     ],
   },
 ])
-

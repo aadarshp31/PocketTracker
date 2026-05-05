@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { NavLink } from 'react-router-dom'
 import { useTransactions } from '../features/transactions/hooks/useTransactions'
 import { useCategories } from '../features/transactions/hooks/useCategories'
 import { useCreateTransaction } from '../features/transactions/hooks/useCreateTransaction'
@@ -223,6 +224,17 @@ export function TransactionsPage() {
           <p className="muted transactions-subtitle">
             Quick add is optimized for repeated entry. Your type, category, and date stay in place after each save.
           </p>
+          <div className="transactions-import-callout">
+            <div>
+              <span className="transactions-import-eyebrow">Bulk Import</span>
+              <p className="transactions-import-copy">
+                Upload a bank statement or add many rows at once when quick add is too slow.
+              </p>
+            </div>
+            <NavLink to="/transactions/bulk-import" className="primary-button transactions-import-link" role="button">
+              Bulk Import
+            </NavLink>
+          </div>
         </div>
         <div className="transactions-hero-stats">
           <div className="transactions-stat-card">
