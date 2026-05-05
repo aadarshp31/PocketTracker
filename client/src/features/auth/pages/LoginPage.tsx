@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -11,7 +11,6 @@ export function LoginPage() {
   const [password, setPassword] = useState('')
   const [mfaCode, setMfaCode] = useState('')
   const [error, setError] = useState('')
-  const [info, setInfo] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   
   const {
@@ -24,6 +23,15 @@ export function LoginPage() {
   } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+
+  const mfaReasonFromQuery = (searchParams.get('mfa_reason') || '').trim()
+  const [info, setInfo] = useState(mfaReasonFromQuery)
+
+  useEffect(() => {
+    if (mfaReasonFromQuery) {
+      setInfo(mfaReasonFromQuery)
+    }
+  }, [mfaReasonFromQuery])
 
   const requestedRedirect = searchParams.get('redirect')
   const redirectTo =

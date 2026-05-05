@@ -82,7 +82,7 @@ async function enrollAndVerifyTotp(
 async function run() {
   const supabaseUrl = process.env.SUPABASE_URL
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || serviceRoleKey
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
 
   assert.ok(supabaseUrl, 'SUPABASE_URL is required')
   assert.ok(serviceRoleKey, 'SUPABASE_SERVICE_ROLE_KEY is required')

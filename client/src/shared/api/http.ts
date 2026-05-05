@@ -19,6 +19,10 @@ export function isMfaRequiredHttpError(error: unknown): boolean {
 }
 
 function emitMfaRequiredEvent() {
+  if (typeof window === 'undefined') {
+    return
+  }
+
   const redirectTo = `${window.location.pathname}${window.location.search}${window.location.hash}`
   const detail: MfaRequiredEventDetail = {
     redirectTo,
