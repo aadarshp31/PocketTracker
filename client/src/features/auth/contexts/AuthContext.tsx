@@ -1,10 +1,29 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
+import QRCode from 'qrcode'
 import { supabase } from '../../../shared/api/supabaseClient'
 import { apiBaseUrl } from '../../../shared/api/http'
 
 const emailRedirectUri =
   (import.meta.env.VITE_AUTH_EMAIL_REDIRECT_TO || '').trim() || `${window.location.origin}/auth/login`
+const isProductionHost = window.location.hostname.toLowerCase() === 'pocket-tracker-one.vercel.app'
+const defaultMfaIssuer = isProductionHost ? 'PocketTracker' : 'PocketTracker Preview'
+const mfaIssuer = (import.meta.env.VITE_MFA_ISSUER || defaultMfaIssuer).trim() || defaultMfaIssuer
+
+function buildBrandedTotpUri(rawUri: string, fallbackLabel: string) {
+  if (!rawUri.startsWith('otpauth://totp/')) {
+    return rawUri
+  }
+
+  const [prefix, query = ''] = rawUri.split('?')
+  const params = new URLSearchParams(query)
+  const accountLabel = fallbackLabel.trim() || 'account'
+  const issuer = mfaIssuer.replace(/:/g, ' ').trim() || 'PocketTracker'
+
+  params.set('issuer', issuer)
+  const encodedPath = encodeURIComponent(`${issuer}:${accountLabel}`)
+  return `${prefix.split('/').slice(0, 3).join('/')}/${encodedPath}?${params.toString()}`
+}
 
 interface AuthUser {
   id: string
@@ -231,7 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
   }
 
-  const enrollMfa = async (friendlyName = 'Authenticator App') => {
+  const enrollMfa = async (friendlyName = 'PocketTracker') => {
     const { data, error } = await supabase.auth.mfa.enroll({
       factorType: 'totp',
       friendlyName,
@@ -241,11 +260,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error || new Error('Unable to start MFA enrollment')
     }
 
+    const sessionEmail = (await supabase.auth.getUser()).data.user?.email || ''
+    const brandedUri = buildBrandedTotpUri(data.totp.uri, sessionEmail || friendlyName)
+
+    let brandedQrCode = data.totp.qr_code
+    try {
+      brandedQrCode = await QRCode.toDataURL(brandedUri, {
+        width: 220,
+        margin: 1,
+      })
+    } catch {
+      // Fall back to Supabase-generated QR if local generation fails.
+    }
+
     return {
       factorId: data.id,
-      qrCode: data.totp.qr_code,
+      qrCode: brandedQrCode,
       secret: data.totp.secret,
-      uri: data.totp.uri,
+      uri: brandedUri,
     }
   }
 
