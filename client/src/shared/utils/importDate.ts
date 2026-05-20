@@ -26,6 +26,21 @@ function toYMD(year: number, month: number, day: number): string | null {
   )
 }
 
+/** Expand a 2-digit year to 4 digits.
+ *  century = 2000 (default) → 61 becomes 2061.
+ *  century = 1900            → 61 becomes 1961. */
+function expandYear(y: number, century: 1900 | 2000 = 2000): number {
+  if (y >= 100) return y
+  return century + y
+}
+
+/** Returns true if any of the sample date strings contain a 2-digit year,
+ *  so the UI can surface a century-confirmation control. */
+export function hasTwoDigitYears(samples: string[]): boolean {
+  return samples.some(s => /^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2})$/.test(s.trim()) ||
+    /^(\d{1,2})[\s\-\/][A-Za-z]{3,9}[\s\-\/](\d{2})$/.test(s.trim()))
+}
+
 /**
  * Parse a date string from a CSV cell into YYYY-MM-DD.
  *
@@ -35,7 +50,11 @@ function toYMD(year: number, month: number, day: number): string | null {
  * Returns null when the value cannot be understood; callers must surface this
  * as an explicit error rather than silently defaulting to today.
  */
-export function parseImportDate(raw: string, format: DateFormat = 'auto'): string | null {
+export function parseImportDate(
+  raw: string,
+  format: DateFormat = 'auto',
+  twoDigitCentury: 1900 | 2000 = 2000,
+): string | null {
   const s = raw.trim()
   if (!s) return null
 
@@ -46,29 +65,29 @@ export function parseImportDate(raw: string, format: DateFormat = 'auto'): strin
   }
   if (format === 'yyyy-mm-dd') return null
 
-  // Month-name formats: 01-Apr-2025  /  01/Apr/2025  /  01 Apr 2025
-  const monthNameMatch = s.match(/^(\d{1,2})[\s\-\/]([A-Za-z]{3,9})[\s\-\/](\d{4})$/)
+  // Month-name formats: 01-Apr-2025  /  01/Apr/2025  /  01 Apr 2025  (2- or 4-digit year)
+  const monthNameMatch = s.match(/^(\d{1,2})[\s\-\/]([A-Za-z]{3,9})[\s\-\/](\d{2,4})$/)
   if (monthNameMatch) {
     const month = MONTH_NAMES[monthNameMatch[2].substring(0, 3).toLowerCase()]
     if (!month) return null
-    return toYMD(Number(monthNameMatch[3]), month, Number(monthNameMatch[1]))
+    return toYMD(expandYear(Number(monthNameMatch[3]), twoDigitCentury), month, Number(monthNameMatch[1]))
   }
   // Also accept Mon-DD-YYYY (some US bank exports)
-  const monthNameUsMatch = s.match(/^([A-Za-z]{3,9})[\s\-\/](\d{1,2})[\s\-\/](\d{4})$/)
+  const monthNameUsMatch = s.match(/^([A-Za-z]{3,9})[\s\-\/](\d{1,2})[\s\-\/](\d{2,4})$/)
   if (monthNameUsMatch) {
     const month = MONTH_NAMES[monthNameUsMatch[1].substring(0, 3).toLowerCase()]
     if (!month) return null
-    return toYMD(Number(monthNameUsMatch[3]), month, Number(monthNameUsMatch[2]))
+    return toYMD(expandYear(Number(monthNameUsMatch[3]), twoDigitCentury), month, Number(monthNameUsMatch[2]))
   }
   if (format === 'dd-MMM-yyyy') return null
 
-  // Numeric two-part: DD/MM/YYYY  MM/DD/YYYY  DD-MM-YYYY  DD.MM.YYYY
-  const numericMatch = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/)
+  // Numeric: DD/MM/YYYY  MM/DD/YYYY  DD-MM-YYYY  DD.MM.YYYY — 2- or 4-digit year
+  const numericMatch = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/)
   if (!numericMatch) return null
 
   const p1 = Number(numericMatch[1])
   const p2 = Number(numericMatch[2])
-  const year = Number(numericMatch[3])
+  const year = expandYear(Number(numericMatch[3]), twoDigitCentury)
 
   if (format === 'dd/mm/yyyy') return toYMD(year, p2, p1)
   if (format === 'mm/dd/yyyy') return toYMD(year, p1, p2)
@@ -108,7 +127,7 @@ export function detectDateFormat(
     total++
     if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(t)) { hasISO++; continue }
     if (/^\d{1,2}[\s\-\/][A-Za-z]{3}/.test(t)) { hasMonthName++; continue }
-    const m = t.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/)
+    const m = t.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/)
     if (m) {
       if (Number(m[1]) > 12) hasHighDay++
       else if (Number(m[2]) > 12) hasHighMonth++
@@ -128,9 +147,9 @@ export function detectDateFormat(
  * Return a human-readable preview string for one raw date value so the UI can
  * show "01/05/2025 → 1 May 2025" next to the format selector.
  */
-export function dateParsePreview(raw: string, format: DateFormat): string {
+export function dateParsePreview(raw: string, format: DateFormat, twoDigitCentury: 1900 | 2000 = 2000): string {
   if (!raw) return ''
-  const parsed = parseImportDate(raw, format)
+  const parsed = parseImportDate(raw, format, twoDigitCentury)
   if (!parsed) return `"${raw}" — could not parse`
   const [y, m, d] = parsed.split('-').map(Number)
   const label = new Intl.DateTimeFormat('en-IN', {

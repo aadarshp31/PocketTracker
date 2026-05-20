@@ -1,10 +1,11 @@
 import { useState, useRef, useMemo } from 'react'
-import { Upload, CheckCircle2, AlertCircle, Trash2, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react'
+import { Upload, CheckCircle2, AlertCircle, Trash2, RotateCcw, ChevronDown, ChevronUp, Eye, EyeOff } from 'lucide-react'
 import { formatCurrency } from '../../../shared/utils/currency'
 import {
   parseImportDate,
   detectDateFormat,
   dateParsePreview,
+  hasTwoDigitYears,
   type DateFormat,
   DATE_FORMAT_LABELS,
 } from '../../../shared/utils/importDate'
@@ -76,6 +77,15 @@ function autoDetectStartRow(rows: string[][]): number {
   return best
 }
 
+/** Returns true for blank rows or rows that only contain separator characters like ***, ---, === */
+function isGarbageRow(row: string[]): boolean {
+  if (!row.length) return true
+  return row.every(cell => {
+    const t = cell.trim()
+    return !t || /^[*\-=_~#]+$/.test(t)
+  })
+}
+
 function autoDetectColumns(headerRow: string[]): CSVColumnMapping {
   const mapping: CSVColumnMapping = {}
   headerRow.forEach((header, index) => {
@@ -117,51 +127,59 @@ export function BulkImportUpload({
   const [step, setStep] = useState<UploadStep>('upload')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // ── Batch 3: Range selection ─────────────────────────────────────────────
-  const [startRow, setStartRow] = useState(0)
+  // ── Range selection ───────────────────────────────────────────────────────
+  const [headerRow, setHeaderRow] = useState(0)
   const [endRow, setEndRow] = useState<number | undefined>(undefined)
   const [startCol, setStartCol] = useState(0)
   const [endCol, setEndCol] = useState<number | undefined>(undefined)
-  const [rangeClickTarget, setRangeClickTarget] = useState<'start' | 'end'>('start')
+  const [rangeClickTarget, setRangeClickTarget] = useState<'header' | 'end'>('header')
+  const [skippedRows, setSkippedRows] = useState<Set<number>>(new Set())
   const [showAllRows, setShowAllRows] = useState(false)
 
-  // ── Column mapping + Batch 2: date format selector ───────────────────────
+  // ── Column mapping + date format selector ────────────────────────────────
   const [columnMapping, setColumnMapping] = useState<CSVColumnMapping>({})
   const [dateFormat, setDateFormat] = useState<DateFormat>('auto')
+  const [twoDigitCentury, setTwoDigitCentury] = useState<1900 | 2000>(2000)
   const [showFormatHelp, setShowFormatHelp] = useState(false)
 
-  // ── Batch 4: Preview with bulk actions ───────────────────────────────────
+  // ── Preview with bulk actions ─────────────────────────────────────────────
   const [parsedRows, setParsedRows] = useState<ParsedImportRow[]>([])
   const [manuallyIgnored, setManuallyIgnored] = useState<Set<number>>(new Set())
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set())
 
-  // ── Derived helpers ──────────────────────────────────────────────────────
+  // ── Derived helpers ───────────────────────────────────────────────────────
   const effectiveEndRow = endRow ?? csvRows.length - 1
   const effectiveEndCol = endCol ?? (csvRows[0]?.length ?? 1) - 1
   const totalCols = csvRows[0]?.length ?? 0
-  const headerRow = csvRows[startRow] ?? []
-  // Columns the user can map: only those in the selected column range
-  const mappableCols = headerRow
+  const headerCells = csvRows[headerRow] ?? []
+  const mappableCols = headerCells
     .map((label, idx) => ({ idx, label }))
     .filter(({ idx }) => idx >= startCol && idx <= effectiveEndCol)
 
-  // ── Date format detection hint ────────────────────────────────────────────
+  const skippedInRange = useMemo(
+    () => [...skippedRows].filter(r => r > headerRow && r <= effectiveEndRow).length,
+    [skippedRows, headerRow, effectiveEndRow],
+  )
+
+  // ── Date format detection ──────────────────────────────────────────────────
   const dateSamples = useMemo(() => {
     if (columnMapping.dateColumn === undefined) return []
     return csvRows
-      .slice(startRow + 1, Math.min(effectiveEndRow + 1, startRow + 21))
+      .slice(headerRow + 1, Math.min(effectiveEndRow + 1, headerRow + 21))
+      .filter((_, i) => !skippedRows.has(headerRow + 1 + i))
       .map((row) => row[columnMapping.dateColumn!]?.trim() ?? '')
       .filter(Boolean)
-  }, [csvRows, startRow, effectiveEndRow, columnMapping.dateColumn])
+  }, [csvRows, headerRow, effectiveEndRow, columnMapping.dateColumn, skippedRows])
 
   const detectedFormat = useMemo(() => detectDateFormat(dateSamples), [dateSamples])
+  const twoDigitYearsDetected = useMemo(() => hasTwoDigitYears(dateSamples), [dateSamples])
 
   const firstDatePreview = useMemo(
-    () => dateParsePreview(dateSamples[0] ?? '', dateFormat),
-    [dateSamples, dateFormat],
+    () => dateParsePreview(dateSamples[0] ?? '', dateFormat, twoDigitCentury),
+    [dateSamples, dateFormat, twoDigitCentury],
   )
 
-  // ── File parsing ─────────────────────────────────────────────────────────
+  // ── File parsing ──────────────────────────────────────────────────────────
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (!selectedFile) return
@@ -174,18 +192,25 @@ export function BulkImportUpload({
     reader.onload = (event) => {
       try {
         const content = event.target?.result as string
-        // Robust CSV split: handle \r\n, quoted commas
         const rawRows = splitCSV(content)
         if (rawRows.length < 2) {
           onError('CSV file must have at least a header row and one data row')
           return
         }
         const detectedStart = autoDetectStartRow(rawRows)
+
+        // Auto-detect and pre-skip blank / separator rows in the data range
+        const autoSkipped = new Set<number>()
+        for (let i = detectedStart + 1; i < rawRows.length; i++) {
+          if (isGarbageRow(rawRows[i])) autoSkipped.add(i)
+        }
+
         setCsvRows(rawRows)
-        setStartRow(detectedStart)
+        setHeaderRow(detectedStart)
         setEndRow(undefined)
         setStartCol(0)
         setEndCol(undefined)
+        setSkippedRows(autoSkipped)
         setStep('range')
       } catch (err) {
         onError(`Failed to read CSV: ${err instanceof Error ? err.message : 'Unknown error'}`)
@@ -196,12 +221,11 @@ export function BulkImportUpload({
 
   // ── Range confirmation ────────────────────────────────────────────────────
   const handleRangeConfirm = () => {
-    if (startRow > effectiveEndRow) {
+    if (headerRow > effectiveEndRow) {
       onError('Header row must be before the last data row')
       return
     }
-    // Auto-detect from full header row, then restrict to selected column range
-    const absoluteMapping = autoDetectColumns(headerRow)
+    const absoluteMapping = autoDetectColumns(headerCells)
     const filtered: CSVColumnMapping = {}
     for (const [key, val] of Object.entries(absoluteMapping)) {
       if (typeof val === 'number' && val >= startCol && val <= effectiveEndCol) {
@@ -210,7 +234,7 @@ export function BulkImportUpload({
     }
     const dateCol = filtered.dateColumn
     const samples = dateCol !== undefined
-      ? csvRows.slice(startRow + 1, Math.min(effectiveEndRow + 1, startRow + 21))
+      ? csvRows.slice(headerRow + 1, Math.min(effectiveEndRow + 1, headerRow + 21))
           .map((r) => r[dateCol]?.trim() ?? '')
           .filter(Boolean)
       : []
@@ -220,12 +244,38 @@ export function BulkImportUpload({
     setStep('mapping')
   }
 
+  // ── Skip row toggle ───────────────────────────────────────────────────────
+  const toggleSkipRow = (rowIdx: number) => {
+    if (rowIdx === headerRow) return
+    setSkippedRows(prev => {
+      const next = new Set(prev)
+      if (next.has(rowIdx)) next.delete(rowIdx)
+      else next.add(rowIdx)
+      return next
+    })
+  }
+
+  // ── Row number click (set header or end) ──────────────────────────────────
+  const handleRowNumberClick = (rowIdx: number) => {
+    if (rangeClickTarget === 'header') {
+      setHeaderRow(rowIdx)
+      setSkippedRows(prev => { const n = new Set(prev); n.delete(rowIdx); return n })
+    } else {
+      if (rowIdx <= headerRow) {
+        setHeaderRow(rowIdx)
+        setSkippedRows(prev => { const n = new Set(prev); n.delete(rowIdx); return n })
+      } else {
+        setEndRow(rowIdx)
+      }
+    }
+  }
+
   // ── Column mapping ────────────────────────────────────────────────────────
   const handleColumnChange = (col: keyof CSVColumnMapping, value: number | undefined) => {
     setColumnMapping((prev) => ({ ...prev, [col]: value }))
   }
 
-  // ── Mapping confirmation → parse rows ─────────────────────────────────────
+  // ── Mapping confirmation → parse rows ────────────────────────────────────
   const handleMappingConfirm = () => {
     const hasAmount = columnMapping.amountColumn !== undefined
     const hasDebitCredit =
@@ -249,10 +299,11 @@ export function BulkImportUpload({
     setStep('preview')
   }
 
-  // ── Core row builder ──────────────────────────────────────────────────────
+  // ── Core row builder ───────────────────────────────────────────────────────
   const buildParsedRows = (): ParsedImportRow[] => {
     const results: ParsedImportRow[] = []
-    for (let i = startRow + 1; i <= effectiveEndRow; i++) {
+    for (let i = headerRow + 1; i <= effectiveEndRow; i++) {
+      if (skippedRows.has(i)) continue
       const row = csvRows[i]
       if (!row) continue
 
@@ -263,14 +314,12 @@ export function BulkImportUpload({
       const description = rawDesc || 'Unknown'
       const descLower = description.toLowerCase()
 
-      // Auto-ignore balance summary rows
       const isBalanceRow = BALANCE_ROW_KEYWORDS.some((kw) => descLower.includes(kw))
       if (isBalanceRow) {
         results.push({ rawRowIndex: i, description, amount: 0, type: 'expense', date: '', rawDate: '', status: 'ignored' })
         continue
       }
 
-      // Amount
       let amount = 0
       let type: 'income' | 'expense' = 'expense'
       if (columnMapping.amountColumn !== undefined) {
@@ -286,7 +335,6 @@ export function BulkImportUpload({
         continue
       }
 
-      // Override type from type column
       if (columnMapping.typeColumn !== undefined) {
         const t = row[columnMapping.typeColumn]?.toLowerCase().trim() ?? ''
         if (t.includes('credit') || t.includes('income') || t.includes('received') ||
@@ -297,7 +345,6 @@ export function BulkImportUpload({
         }
       }
 
-      // Date
       const rawDate =
         columnMapping.dateColumn !== undefined
           ? row[columnMapping.dateColumn]?.trim() ?? ''
@@ -306,7 +353,7 @@ export function BulkImportUpload({
         results.push({ rawRowIndex: i, description, amount, type, date: '', rawDate: '', status: 'invalid_date' })
         continue
       }
-      const parsedDate = rawDate ? parseImportDate(rawDate, dateFormat) : null
+      const parsedDate = rawDate ? parseImportDate(rawDate, dateFormat, twoDigitCentury) : null
       if (rawDate && !parsedDate) {
         results.push({ rawRowIndex: i, description, amount, type, date: '', rawDate, status: 'invalid_date' })
         continue
@@ -321,7 +368,7 @@ export function BulkImportUpload({
     return results
   }
 
-  // ── Batch 4: Bulk delete actions ──────────────────────────────────────────
+  // ── Preview bulk actions ───────────────────────────────────────────────────
   const activeRows = parsedRows.filter((r) => !manuallyIgnored.has(r.rawRowIndex))
   const validRows = activeRows.filter((r) => r.status === 'valid')
   const invalidDateRows = activeRows.filter((r) => r.status === 'invalid_date')
@@ -362,7 +409,7 @@ export function BulkImportUpload({
     setSelectedRows(new Set())
   }
 
-  // ── Final confirm → send valid rows to parent ─────────────────────────────
+  // ── Final confirm ──────────────────────────────────────────────────────────
   const handleConfirm = () => {
     if (validRows.length === 0) {
       onError('No valid transactions to import. Fix date errors or restore ignored rows.')
@@ -377,37 +424,24 @@ export function BulkImportUpload({
     onFileProcess(transactions, columnMapping)
   }
 
-  // ── Range row click ────────────────────────────────────────────────────────
-  const handleRowNumberClick = (rowIdx: number) => {
-    if (rangeClickTarget === 'start') {
-      setStartRow(rowIdx)
-      setRangeClickTarget('end')
-    } else {
-      if (rowIdx <= startRow) {
-        setStartRow(rowIdx)
-      } else {
-        setEndRow(rowIdx)
-      }
-      setRangeClickTarget('start')
-    }
-  }
-
-  // ── Render helpers ────────────────────────────────────────────────────────
+  // ── Render helpers ─────────────────────────────────────────────────────────
   const colOptionLabel = (idx: number) => {
-    const headerVal = headerRow[idx]?.trim()
+    const headerVal = headerCells[idx]?.trim()
     return headerVal ? `${idx}: ${headerVal.substring(0, 22)}` : `Column ${idx}`
   }
 
   const RANGE_PREVIEW_LIMIT = 12
   const displayRows = showAllRows ? csvRows : csvRows.slice(0, Math.max(effectiveEndRow + 3, RANGE_PREVIEW_LIMIT))
 
-  // ═════════════════════════════════════════════════════════════════════════
+  const effectiveDataRows = Math.max(0, effectiveEndRow - headerRow) - skippedInRange
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // RENDER
-  // ═════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
   return (
     <div className="bulk-upload-flow">
 
-      {/* ── STEP 1: Upload dropzone ─────────────────────────────────── */}
+      {/* ── STEP 1: Upload dropzone ───────────────────────────────── */}
       {step === 'upload' && (
         <div
           className="bulk-upload-dropzone"
@@ -451,14 +485,14 @@ export function BulkImportUpload({
         </div>
       )}
 
-      {/* ── STEP 2: Range selection ─────────────────────────────────── */}
+      {/* ── STEP 2: Range selection ───────────────────────────────── */}
       {step === 'range' && csvRows.length > 0 && (
         <div className="bulk-upload-section">
           <div className="bulk-upload-section-header">
             <div>
               <h3>Select Statement Range</h3>
               <p>
-                Most bank exports have metadata above and below the actual table. Click a row number to set it as your header, then adjust the end row if needed.
+                Set the header row, adjust the end row if needed, and skip any blank or separator rows in between.
               </p>
             </div>
             <div className="bulk-range-file-badge">
@@ -469,49 +503,61 @@ export function BulkImportUpload({
 
           {/* Range controls */}
           <div className="bulk-range-controls">
-            <div className="bulk-range-control-group">
-              <label>Header / start row</label>
-              <div className="bulk-range-row-hint">
-                <span className="bulk-range-row-hint-badge">Row {startRow + 1}</span>
-                <span className="muted" style={{ fontSize: '0.85rem' }}>
-                  {rangeClickTarget === 'start' ? 'Click a row number below to move it' : 'Click a row number to set end row'}
-                </span>
+
+            {/* Click mode segmented control */}
+            <div className="bulk-range-mode-row">
+              <span className="bulk-range-mode-label">Click row number to set:</span>
+              <div className="bulk-range-mode-selector">
                 <button
                   type="button"
-                  className="bulk-range-retarget-btn"
-                  onClick={() => setRangeClickTarget(rangeClickTarget === 'start' ? 'end' : 'start')}
+                  className={`bulk-range-mode-btn ${rangeClickTarget === 'header' ? 'is-active' : ''}`}
+                  onClick={() => setRangeClickTarget('header')}
                 >
-                  {rangeClickTarget === 'start' ? 'Switch to setting end row' : 'Switch to setting start row'}
+                  Header Row
+                </button>
+                <button
+                  type="button"
+                  className={`bulk-range-mode-btn ${rangeClickTarget === 'end' ? 'is-active' : ''}`}
+                  onClick={() => setRangeClickTarget('end')}
+                >
+                  End Row
                 </button>
               </div>
             </div>
 
-            <div className="bulk-upload-mapping-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '0.7rem' }}>
-              <div className="quick-field">
+            {/* Numeric inputs grid */}
+            <div className="bulk-range-inputs-grid">
+              <div className="bulk-range-input-card is-header">
                 <label>Header row</label>
                 <input
                   type="number"
                   min={1}
                   max={csvRows.length}
-                  value={startRow + 1}
-                  onChange={(e) => setStartRow(Math.max(0, Number(e.target.value) - 1))}
+                  value={headerRow + 1}
+                  onChange={(e) => {
+                    const idx = Math.max(0, Number(e.target.value) - 1)
+                    setHeaderRow(idx)
+                    setSkippedRows(prev => { const n = new Set(prev); n.delete(idx); return n })
+                  }}
                 />
+                <span className="bulk-range-input-hint">Column names row</span>
               </div>
-              <div className="quick-field">
-                <label>End row (optional)</label>
+              <div className="bulk-range-input-card">
+                <label>End row</label>
                 <input
                   type="number"
-                  min={startRow + 2}
+                  min={headerRow + 2}
                   max={csvRows.length}
                   value={endRow !== undefined ? endRow + 1 : ''}
                   placeholder={`${csvRows.length} (last)`}
                   onChange={(e) =>
-                    setEndRow(e.target.value ? Math.max(startRow + 1, Number(e.target.value) - 1) : undefined)
+                    setEndRow(e.target.value ? Math.max(headerRow + 1, Number(e.target.value) - 1) : undefined)
                   }
                 />
+                <span className="bulk-range-input-hint">Optional — defaults to last</span>
               </div>
-              <div className="quick-field">
-                <label>Start column (optional)</label>
+              <div className="bulk-range-input-card">
+                <label>Start column</label>
                 <input
                   type="number"
                   min={1}
@@ -522,9 +568,10 @@ export function BulkImportUpload({
                     setStartCol(e.target.value ? Math.max(0, Number(e.target.value) - 1) : 0)
                   }
                 />
+                <span className="bulk-range-input-hint">Optional</span>
               </div>
-              <div className="quick-field">
-                <label>End column (optional)</label>
+              <div className="bulk-range-input-card">
+                <label>End column</label>
                 <input
                   type="number"
                   min={startCol + 1}
@@ -535,16 +582,23 @@ export function BulkImportUpload({
                     setEndCol(e.target.value ? Math.max(startCol, Number(e.target.value) - 1) : undefined)
                   }
                 />
+                <span className="bulk-range-input-hint">Optional</span>
               </div>
             </div>
           </div>
 
-          {/* Range summary */}
+          {/* Summary pills */}
           <div className="bulk-range-summary">
             <span className="bulk-range-summary-pill is-green">
               <CheckCircle2 className="w-3.5 h-3.5" />
-              {Math.max(0, effectiveEndRow - startRow)} data rows selected
+              {effectiveDataRows} data rows
             </span>
+            {skippedInRange > 0 && (
+              <span className="bulk-range-summary-pill is-skipped">
+                <EyeOff className="w-3.5 h-3.5" />
+                {skippedInRange} skipped
+              </span>
+            )}
             <span className="bulk-range-summary-pill">
               {effectiveEndCol - startCol + 1} of {totalCols} columns
             </span>
@@ -569,25 +623,35 @@ export function BulkImportUpload({
                       {colIdx + 1}
                     </th>
                   ))}
+                  <th className="bulk-range-skip-th" title="Skip row">
+                    <EyeOff className="w-3 h-3" />
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {displayRows.map((row, rowIdx) => {
-                  const isHeader = rowIdx === startRow
-                  const isInRange = rowIdx > startRow && rowIdx <= effectiveEndRow
-                  const isOutside = rowIdx < startRow || rowIdx > effectiveEndRow
+                  const isHeader = rowIdx === headerRow
+                  const isInRange = rowIdx > headerRow && rowIdx <= effectiveEndRow
+                  const isOutside = rowIdx < headerRow || rowIdx > effectiveEndRow
+                  const isSkipped = skippedRows.has(rowIdx)
                   return (
                     <tr
                       key={rowIdx}
-                      className={`bulk-range-row ${isHeader ? 'is-header' : ''} ${isInRange ? 'is-in-range' : ''} ${isOutside ? 'is-outside-range' : ''}`}
+                      className={[
+                        'bulk-range-row',
+                        isHeader ? 'is-header' : '',
+                        isInRange && !isSkipped ? 'is-in-range' : '',
+                        isOutside ? 'is-outside-range' : '',
+                        isSkipped ? 'is-skipped' : '',
+                      ].filter(Boolean).join(' ')}
                     >
                       <td className="bulk-range-rownum-cell">
                         <button
                           type="button"
-                          className={`bulk-range-rownum-btn ${isHeader ? 'is-header' : ''}`}
+                          className={`bulk-range-rownum-btn ${isHeader ? 'is-header' : ''} ${isSkipped ? 'is-skipped' : ''}`}
                           title={
-                            rangeClickTarget === 'start'
-                              ? `Set row ${rowIdx + 1} as header`
+                            rangeClickTarget === 'header'
+                              ? `Set row ${rowIdx + 1} as header row`
                               : `Set row ${rowIdx + 1} as end row`
                           }
                           onClick={() => handleRowNumberClick(rowIdx)}
@@ -603,6 +667,21 @@ export function BulkImportUpload({
                           {cell?.trim().substring(0, 28)}
                         </td>
                       ))}
+                      <td className="bulk-range-skip-cell">
+                        {isInRange && (
+                          <button
+                            type="button"
+                            className={`bulk-range-skip-btn ${isSkipped ? 'is-skipped' : ''}`}
+                            title={isSkipped ? 'Include this row' : 'Skip this row'}
+                            onClick={() => toggleSkipRow(rowIdx)}
+                          >
+                            {isSkipped
+                              ? <EyeOff className="w-3.5 h-3.5" />
+                              : <Eye className="w-3.5 h-3.5" />
+                            }
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   )
                 })}
@@ -639,7 +718,7 @@ export function BulkImportUpload({
         </div>
       )}
 
-      {/* ── STEP 3: Column mapping + date format ────────────────────── */}
+      {/* ── STEP 3: Column mapping + date format ──────────────────── */}
       {step === 'mapping' && (
         <div className="bulk-upload-section">
           <div className="bulk-upload-section-header">
@@ -665,7 +744,7 @@ export function BulkImportUpload({
                 </tr>
               </thead>
               <tbody>
-                {csvRows.slice(startRow + 1, startRow + 4).map((row, rIdx) => (
+                {csvRows.slice(headerRow + 1, headerRow + 4).map((row, rIdx) => (
                   <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-gray-50' : ''}>
                     {mappableCols.map(({ idx }) => (
                       <td key={idx} className="px-3 py-1.5 border-r text-gray-600 text-xs">
@@ -679,7 +758,6 @@ export function BulkImportUpload({
           </div>
 
           <div className="bulk-upload-mapping-grid">
-            {/* Date column */}
             <div className="quick-field">
               <label>Date Column</label>
               <select
@@ -693,7 +771,6 @@ export function BulkImportUpload({
               </select>
             </div>
 
-            {/* Description column */}
             <div className="quick-field">
               <label>Description Column *</label>
               <select
@@ -707,7 +784,6 @@ export function BulkImportUpload({
               </select>
             </div>
 
-            {/* Amount column */}
             <div className="quick-field">
               <label>Amount Column</label>
               <select
@@ -721,7 +797,6 @@ export function BulkImportUpload({
               </select>
             </div>
 
-            {/* Debit column */}
             <div className="quick-field">
               <label>Debit Column</label>
               <select
@@ -735,7 +810,6 @@ export function BulkImportUpload({
               </select>
             </div>
 
-            {/* Credit column */}
             <div className="quick-field">
               <label>Credit Column</label>
               <select
@@ -749,7 +823,6 @@ export function BulkImportUpload({
               </select>
             </div>
 
-            {/* Type column */}
             <div className="quick-field">
               <label>Type Column (optional)</label>
               <select
@@ -764,7 +837,7 @@ export function BulkImportUpload({
             </div>
           </div>
 
-          {/* ── Batch 2: Date format selector ── */}
+          {/* Date format selector */}
           {columnMapping.dateColumn !== undefined && (
             <div className="bulk-date-format-panel">
               <div className="bulk-date-format-header">
@@ -804,6 +877,31 @@ export function BulkImportUpload({
                   )}
                   {firstDatePreview}
                 </p>
+              )}
+
+              {twoDigitYearsDetected && (
+                <div className="bulk-century-confirm">
+                  <div className="bulk-century-confirm-label">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    2-digit years detected — which century?
+                  </div>
+                  <div className="bulk-range-mode-selector">
+                    <button
+                      type="button"
+                      className={`bulk-range-mode-btn ${twoDigitCentury === 2000 ? 'is-active' : ''}`}
+                      onClick={() => setTwoDigitCentury(2000)}
+                    >
+                      2000s &nbsp;<span className="bulk-century-example">26 → 2026</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`bulk-range-mode-btn ${twoDigitCentury === 1900 ? 'is-active' : ''}`}
+                      onClick={() => setTwoDigitCentury(1900)}
+                    >
+                      1900s &nbsp;<span className="bulk-century-example">26 → 1926</span>
+                    </button>
+                  </div>
+                </div>
               )}
 
               {showFormatHelp && (
