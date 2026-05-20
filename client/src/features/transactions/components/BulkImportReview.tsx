@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
+import { AlertCircle, RefreshCw, RotateCcw, Trash2, CheckSquare } from 'lucide-react'
 import { formatCurrency } from '../../../shared/utils/currency'
 import { useCategories } from '../hooks/useCategories'
 
@@ -67,6 +67,7 @@ export function BulkImportReview({
   const [selectedDuplicateAction, setSelectedDuplicateAction] = useState<Record<number, 'skip' | 'import' | 'merge'>>({})
   const [editableTransactions, setEditableTransactions] = useState<PreviewTransaction[]>([])
   const [discardedTransactionIndices, setDiscardedTransactionIndices] = useState<Set<number>>(new Set())
+  const [bulkSelectedIndices, setBulkSelectedIndices] = useState<Set<number>>(new Set())
   const [expandedDuplicate, setExpandedDuplicate] = useState<number | null>(null)
   const [reviewError, setReviewError] = useState('')
 
@@ -76,6 +77,7 @@ export function BulkImportReview({
   useEffect(() => {
     setEditableTransactions(transactions)
     setDiscardedTransactionIndices(new Set())
+    setBulkSelectedIndices(new Set())
     setSelectedDuplicateAction({})
     setReviewError('')
   }, [transactions])
@@ -119,6 +121,40 @@ export function BulkImportReview({
       }
       return updated
     })
+  }
+
+  const handleToggleBulkSelect = (index: number) => {
+    setBulkSelectedIndices((prev) => {
+      const updated = new Set(prev)
+      if (updated.has(index)) updated.delete(index)
+      else updated.add(index)
+      return updated
+    })
+  }
+
+  const handleBulkSelectAll = () => {
+    if (bulkSelectedIndices.size === editableTransactions.length) {
+      setBulkSelectedIndices(new Set())
+    } else {
+      setBulkSelectedIndices(new Set(editableTransactions.map((tx) => tx.index)))
+    }
+  }
+
+  const handleBulkDiscardSelected = () => {
+    setDiscardedTransactionIndices((prev) => new Set([...prev, ...bulkSelectedIndices]))
+    setBulkSelectedIndices(new Set())
+  }
+
+  const handleBulkRestoreAll = () => {
+    setDiscardedTransactionIndices(new Set())
+    setBulkSelectedIndices(new Set())
+  }
+
+  const handleBulkSelectDuplicates = () => {
+    const dupIndices = editableTransactions
+      .filter((tx) => duplicateByIndex.has(tx.index))
+      .map((tx) => tx.index)
+    setBulkSelectedIndices(new Set(dupIndices))
   }
 
   const isRowIncluded = (txIndex: number) => {
@@ -208,10 +244,40 @@ export function BulkImportReview({
           {selectedForImportCount} selected for import{excludedCount > 0 ? ` • ${excludedCount} excluded` : ''}
         </p>
 
+        {/* Bulk action toolbar */}
+        <div className="bulk-preview-toolbar">
+          <label className="bulk-preview-select-all">
+            <input
+              type="checkbox"
+              checked={bulkSelectedIndices.size === editableTransactions.length && editableTransactions.length > 0}
+              onChange={handleBulkSelectAll}
+            />
+            <span>{bulkSelectedIndices.size > 0 ? `${bulkSelectedIndices.size} selected` : 'Select rows'}</span>
+          </label>
+          <div className="bulk-preview-toolbar-actions">
+            {flaggedDuplicateCount > 0 && (
+              <button type="button" className="bulk-preview-action-btn is-warn" onClick={handleBulkSelectDuplicates}>
+                <CheckSquare className="w-3.5 h-3.5" /> Select duplicates
+              </button>
+            )}
+            {bulkSelectedIndices.size > 0 && (
+              <button type="button" className="bulk-preview-action-btn is-danger" onClick={handleBulkDiscardSelected}>
+                <Trash2 className="w-3.5 h-3.5" /> Discard selected ({bulkSelectedIndices.size})
+              </button>
+            )}
+            {discardedTransactionIndices.size > 0 && (
+              <button type="button" className="bulk-preview-action-btn is-restore" onClick={handleBulkRestoreAll}>
+                <RotateCcw className="w-3.5 h-3.5" /> Restore all ({discardedTransactionIndices.size})
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="overflow-x-auto table-wrap bulk-review-table-wrap">
           <table className="w-full text-sm bulk-review-table">
             <thead>
               <tr>
+                <th className="px-2 py-2 w-8"></th>
                 <th className="px-4 py-2 text-left bulk-review-col-date">Date (YYYY-MM-DD)</th>
                 <th className="px-4 py-2 text-left bulk-review-col-description">Description</th>
                 <th className="px-4 py-2 text-right bulk-review-col-amount">Amount</th>
@@ -229,6 +295,14 @@ export function BulkImportReview({
 
                 return (
                   <tr key={tx.index} className={`bulk-review-row ${rowStatusClassName(tx.index)}`}>
+                    <td className="px-2 py-2">
+                      <input
+                        type="checkbox"
+                        checked={bulkSelectedIndices.has(tx.index)}
+                        onChange={() => handleToggleBulkSelect(tx.index)}
+                        disabled={isLoading}
+                      />
+                    </td>
                     <td className="px-4 py-2">
                       <input
                         type="date"

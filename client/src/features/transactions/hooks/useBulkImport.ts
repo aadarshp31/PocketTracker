@@ -1,5 +1,13 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { bulkImportPreview, bulkImportSubmit, type BulkImportPayload } from '../api/bulkImport'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { bulkImportPreview, bulkImportSubmit, getBulkImportConfig, type BulkImportPayload } from '../api/bulkImport'
+
+export function useBulkImportConfig() {
+  return useQuery({
+    queryKey: ['bulk-import-config'],
+    queryFn: getBulkImportConfig,
+    staleTime: 5 * 60 * 1000,
+  })
+}
 
 export function useBulkImportPreview() {
   return useMutation({
@@ -13,7 +21,6 @@ export function useBulkImportSubmit() {
   return useMutation({
     mutationFn: (payload: BulkImportPayload) => bulkImportSubmit(payload),
     onSuccess: () => {
-      // Invalidate transactions and insights caches
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['insights'] })
       queryClient.invalidateQueries({ queryKey: ['summary'] })

@@ -3,7 +3,7 @@ import { Upload, Type, CheckCircle2 } from 'lucide-react'
 import { BulkImportUpload } from '../components/BulkImportUpload'
 import { BulkManualEntry, type ManualTransaction } from '../components/BulkManualEntry'
 import { BulkImportReview, type PreviewTransaction, type FlaggedDuplicate } from '../components/BulkImportReview'
-import { useBulkImportPreview, useBulkImportSubmit } from '../hooks/useBulkImport'
+import { useBulkImportPreview, useBulkImportSubmit, useBulkImportConfig } from '../hooks/useBulkImport'
 import { useProfile } from '../../profile/hooks/useProfile'
 
 export default function BulkImportPage() {
@@ -21,7 +21,9 @@ export default function BulkImportPage() {
   const previewMutation = useBulkImportPreview()
   const submitMutation = useBulkImportSubmit()
   const profileQuery = useProfile()
+  const bulkConfigQuery = useBulkImportConfig()
   const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
+  const maxBatch = bulkConfigQuery.data?.maxTransactionsPerBatch ?? 500
 
   const handleCsvFileProcess = async (transactions: Array<{
     amount: number
@@ -31,6 +33,14 @@ export default function BulkImportPage() {
     category_id?: string
     }>) => {
     setError('')
+
+    if (transactions.length > maxBatch) {
+      setError(
+        `This selection has ${transactions.length} transactions, but the limit is ${maxBatch} per import. ` +
+        `Use the range selector to split your statement into batches of up to ${maxBatch} rows and import each batch separately.`
+      )
+      return
+    }
 
     try {
       const result = await previewMutation.mutateAsync({ transactions })

@@ -4,6 +4,9 @@ import UserService from "../services/UserService";
 import AuthService from "../services/AuthService";
 import { Order } from "sequelize";
 
+/** Maximum transactions accepted by the bulk import endpoints per request. */
+export const BULK_IMPORT_MAX_TRANSACTIONS = 500;
+
 export default class TransactionController {
   private transactionService: TransactionService;
   private userService: UserService;
@@ -287,12 +290,16 @@ export default class TransactionController {
     }
   }
 
+  async getBulkConfig(_req: Request, res: Response) {
+    res.status(200).json({
+      maxTransactionsPerBatch: BULK_IMPORT_MAX_TRANSACTIONS,
+    });
+  }
+
   async bulkCreatePreview(req: Request, res: Response) {
     try {
       if (!req.user?.id) {
-        res.status(401).json({
-          message: 'User not authenticated'
-        });
+        res.status(401).json({ message: 'User not authenticated' });
         return;
       }
 
@@ -310,6 +317,15 @@ export default class TransactionController {
       if (!Array.isArray(transactions) || transactions.length === 0) {
         res.status(400).json({
           message: "Invalid or empty transactions array"
+        });
+        return;
+      }
+
+      if (transactions.length > BULK_IMPORT_MAX_TRANSACTIONS) {
+        res.status(400).json({
+          message: `Too many transactions. Maximum allowed per request is ${BULK_IMPORT_MAX_TRANSACTIONS}. You sent ${transactions.length}. Split your statement into smaller ranges and import in batches.`,
+          maxAllowed: BULK_IMPORT_MAX_TRANSACTIONS,
+          received: transactions.length,
         });
         return;
       }
@@ -352,6 +368,15 @@ export default class TransactionController {
       if (!Array.isArray(transactions) || transactions.length === 0) {
         res.status(400).json({
           message: "Invalid or empty transactions array"
+        });
+        return;
+      }
+
+      if (transactions.length > BULK_IMPORT_MAX_TRANSACTIONS) {
+        res.status(400).json({
+          message: `Too many transactions. Maximum allowed per request is ${BULK_IMPORT_MAX_TRANSACTIONS}. You sent ${transactions.length}. Split your statement into smaller ranges and import in batches.`,
+          maxAllowed: BULK_IMPORT_MAX_TRANSACTIONS,
+          received: transactions.length,
         });
         return;
       }

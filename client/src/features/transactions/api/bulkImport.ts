@@ -10,6 +10,15 @@ export interface BulkImportPayload {
   }>
 }
 
+export interface BulkImportConfig {
+  maxTransactionsPerBatch: number
+}
+
+export async function getBulkImportConfig(): Promise<BulkImportConfig> {
+  const response = await http.get('/transactions/bulk/config')
+  return response.data
+}
+
 export async function bulkImportPreview(payload: BulkImportPayload) {
   const response = await http.post('/transactions/bulk/preview', payload)
   return response.data

@@ -36,7 +36,7 @@ if (process.env.NODE_ENV === "development") {
 
 // middlewares setup
 app.use(express.static('public'));
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 // db connection
 connectToRelationalDatabase().then(async () => {
