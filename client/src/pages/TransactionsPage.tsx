@@ -8,6 +8,7 @@ import { useUpdateTransaction } from '../features/transactions/hooks/useUpdateTr
 import { useDeleteTransaction } from '../features/transactions/hooks/useDeleteTransaction'
 import { useProfile } from '../features/profile/hooks/useProfile'
 import { formatCurrency } from '../shared/utils/currency'
+import { todayString, safeLocaleDateString } from '../shared/utils/importDate'
 import type { TransactionType } from '../features/transactions/types'
 
 interface TransactionFormState {
@@ -23,7 +24,7 @@ const initialFormState: TransactionFormState = {
   type: 'expense',
   description: '',
   category_id: '',
-  date: new Date().toISOString().slice(0, 10),
+  date: todayString(),
 }
 
 function buildQuickAddState(form: TransactionFormState): TransactionFormState {
@@ -42,7 +43,7 @@ function toPayload(form: TransactionFormState) {
     type: form.type,
     description: form.description,
     category_id: form.category_id,
-    date: new Date(form.date).toISOString(),
+    date: form.date,
   }
 }
 
@@ -143,7 +144,7 @@ export function TransactionsPage() {
       type: transaction.type,
       description: transaction.description ?? '',
       category_id: transaction.category_id,
-      date: new Date(transaction.date).toISOString().slice(0, 10),
+      date: String(transaction.date).slice(0, 10),
     })
   }
 
@@ -186,11 +187,11 @@ export function TransactionsPage() {
   }
 
   function applyDateShortcut(offsetDays: number) {
-    const date = new Date()
-    date.setDate(date.getDate() + offsetDays)
+    const d = new Date()
+    d.setDate(d.getDate() + offsetDays)
     setForm((prev) => ({
       ...prev,
-      date: date.toISOString().slice(0, 10),
+      date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
     }))
   }
 
@@ -427,7 +428,7 @@ export function TransactionsPage() {
             ) : (
               transactions.map((item) => (
                 <tr key={item.id}>
-                  <td>{new Date(item.date).toLocaleDateString()}</td>
+                  <td>{safeLocaleDateString(item.date)}</td>
                   <td>
                     <span className={`transaction-type-badge ${item.type === 'income' ? 'is-income' : 'is-expense'}`}>
                       {item.type}

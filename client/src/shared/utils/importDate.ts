@@ -140,3 +140,24 @@ export function dateParsePreview(raw: string, format: DateFormat): string {
   }).format(new Date(y, m - 1, d))
   return `"${raw}"  →  ${label}`
 }
+
+/** Returns today's date as a YYYY-MM-DD string using local (wall-clock) time,
+ *  avoiding the UTC midnight shift that `new Date().toISOString()` produces in
+ *  timezones that are ahead of UTC (e.g. IST). */
+export function todayString(): string {
+  const n = new Date()
+  return toYMD(n.getFullYear(), n.getMonth() + 1, n.getDate()) as string
+}
+
+/** Safely displays a stored DATEONLY string (YYYY-MM-DD) in the user's locale
+ *  without parsing it as UTC midnight, which shifts the date backward in
+ *  timezones ahead of UTC (e.g. IST, AEST). */
+export function safeLocaleDateString(
+  dateStr: string,
+  options?: Intl.DateTimeFormatOptions,
+): string {
+  const m = dateStr?.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return dateStr ?? ''
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return d.toLocaleDateString(undefined, options)
+}

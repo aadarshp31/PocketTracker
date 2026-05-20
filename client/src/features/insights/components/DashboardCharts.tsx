@@ -13,6 +13,7 @@ import {
   YAxis,
 } from 'recharts'
 import { formatCurrency } from '../../../shared/utils/currency'
+import { safeLocaleDateString } from '../../../shared/utils/importDate'
 import type { CategoryData, DailyPatternData, MonthlyTrendData, ProjectionData, SpikesData } from '../types'
 
 const chartPalette = ['#1d4ed8', '#f59e0b', '#059669', '#dc2626', '#7c3aed', '#0891b2']
@@ -59,7 +60,7 @@ export default function DashboardCharts({ currency, categoryData, patternData, s
     average: Number(item.average),
   }))
   const spikesChartData = spikesData.spikes.map((spike) => ({
-    label: new Date(spike.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    label: safeLocaleDateString(spike.date, { month: 'short', day: 'numeric' }),
     total: Number(spike.total),
   }))
   const trendChartData = trendData.series.map((item) => ({
@@ -193,7 +194,7 @@ export default function DashboardCharts({ currency, categoryData, patternData, s
             <div className="dashboard-spike-list">
               {spikesData.spikes.map((spike) => (
                 <div key={spike.date} className="dashboard-spike-row">
-                  <span>{new Date(spike.date).toLocaleDateString()}</span>
+                  <span>{safeLocaleDateString(spike.date)}</span>
                   <span>{formatCurrency(spike.total, currency)}</span>
                   <span>{spike.ratio}x</span>
                   <span className={`dashboard-severity-badge is-${spike.severity}`}>{spike.severity}</span>

@@ -312,7 +312,10 @@ export function BulkImportUpload({
         continue
       }
 
-      const date = parsedDate ?? new Date().toISOString().split('T')[0]
+      const date = parsedDate ?? (() => {
+        const n = new Date()
+        return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+      })()
       results.push({ rawRowIndex: i, description, amount, type, date, rawDate, status: 'valid' })
     }
     return results

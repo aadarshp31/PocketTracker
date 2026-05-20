@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AlertCircle, RefreshCw, RotateCcw, Trash2, CheckSquare } from 'lucide-react'
 import { formatCurrency } from '../../../shared/utils/currency'
+import { safeLocaleDateString } from '../../../shared/utils/importDate'
 import { useCategories } from '../hooks/useCategories'
 
 export interface DuplicateMatch {
@@ -194,13 +195,12 @@ export function BulkImportReview({
     }
 
     const invalidTransaction = transactionsToImport.find((tx) => {
-      const parsedDate = new Date(tx.date)
       return (
         !tx.description ||
         !tx.category_id ||
         Number.isNaN(tx.amount) ||
         tx.amount <= 0 ||
-        Number.isNaN(parsedDate.getTime()) ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(tx.date) ||
         (tx.type !== 'income' && tx.type !== 'expense')
       )
     })
@@ -421,7 +421,7 @@ export function BulkImportReview({
                     <div>
                       <p className="font-medium">{duplicate.newTransaction.description}</p>
                       <p className="text-sm text-gray-600">
-                        {formatCurrency(duplicate.newTransaction.amount, currency)} on {duplicate.newTransaction.date}
+                        {formatCurrency(duplicate.newTransaction.amount, currency)} on {safeLocaleDateString(duplicate.newTransaction.date)}
                       </p>
                     </div>
                     <RefreshCw className={`w-5 h-5 text-yellow-600 transition ${
@@ -439,7 +439,7 @@ export function BulkImportReview({
                             <div>
                               <p className="font-medium">{match.existingTransaction.description}</p>
                               <p className="text-sm text-gray-600">
-                                {formatCurrency(match.existingTransaction.amount, currency)} on {match.existingTransaction.date}
+                                {formatCurrency(match.existingTransaction.amount, currency)} on {safeLocaleDateString(match.existingTransaction.date)}
                               </p>
                             </div>
                             <div className="text-right">

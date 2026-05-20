@@ -13,15 +13,15 @@ const DashboardCharts = lazy(() => import('../features/insights/components/Dashb
 
 export function DashboardPage() {
   const today = new Date()
-  const [selectedMonth, setSelectedMonth] = useState(today.getUTCMonth() + 1)
-  const [selectedYear, setSelectedYear] = useState(today.getUTCFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1)
+  const [selectedYear, setSelectedYear] = useState(today.getFullYear())
 
   const periodParams = useMemo(
     () => ({ month: selectedMonth, year: selectedYear }),
     [selectedMonth, selectedYear]
   )
   const yearOptions = useMemo(() => {
-    const currentYear = today.getUTCFullYear()
+    const currentYear = today.getFullYear()
     return Array.from({ length: 4 }, (_, index) => currentYear - index)
   }, [today])
 

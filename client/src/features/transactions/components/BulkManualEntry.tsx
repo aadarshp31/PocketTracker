@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Trash2, TrendingUp } from 'lucide-react'
 import { useCategories } from '../hooks/useCategories'
 import { formatCurrency } from '../../../shared/utils/currency'
+import { todayString } from '../../../shared/utils/importDate'
 
 export interface ManualTransaction {
   id: string
@@ -55,12 +56,7 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
   const addRow = () => {
     const newRow: ManualTransaction = {
       id: `temp-${Date.now()}-${Math.random()}`,
-      date: new Date().toISOString().split('T')[0],
-      description: '',
-      amount: 0,
-      type: 'expense',
-    }
-    setTransactions((prev) => [...prev, newRow])
+      date: todayString(),
   }
 
   const removeRow = (id: string) => {
@@ -87,8 +83,7 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
   const addQuickCategory = (category: QuickAddCategory) => {
     const newRow: ManualTransaction = {
       id: `temp-${Date.now()}-${Math.random()}`,
-      date: new Date().toISOString().split('T')[0],
-      description: category.categoryName,
+      date: todayString(),
       amount: 0,
       type: category.type,
       category_id: category.categoryId,

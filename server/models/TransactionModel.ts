@@ -20,7 +20,7 @@ const TransactionModel = sequelize.define('transaction', {
     type: DataTypes.TEXT,
   },
   date: {
-    type: DataTypes.DATE,
+    type: DataTypes.DATEONLY,
     defaultValue: DataTypes.NOW
   },
   category_id: {
