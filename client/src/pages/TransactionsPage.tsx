@@ -197,6 +197,21 @@ export function TransactionsPage() {
     deleteMutation.isPending ||
     createCategoryMutation.isPending
 
+  const hasLoadError = query.isError || categoriesQuery.isError || profileQuery.isError
+  const transactions = query.data?.transactions ?? []
+  const meta = query.data?.meta
+  const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
+  const heroSecondaryLabel =
+    appliedFilters.sort === 'newest' ? 'Latest in list' : getSortLabel(appliedFilters.sort)
+
+  function markCategoryManual() {
+    setCategoryManuallySet(true)
+  }
+
+  function resetCategoryManualTracking() {
+    setCategoryManuallySet(false)
+  }
+
   function applyFilters() {
     setAppliedFilters(draftFilters)
     setPage(1)
@@ -371,40 +386,20 @@ export function TransactionsPage() {
     }))
   }
 
-  if (isInitialLoading) {
-    return (
-      <section>
-        <h1>Transactions</h1>
-        <p>Loading transactions...</p>
-      </section>
-    )
-  }
-
-  if (query.isError || categoriesQuery.isError || profileQuery.isError) {
-    return (
-      <section>
-        <h1>Transactions</h1>
-        <p className="error">Failed to load transactions.</p>
-      </section>
-    )
-  }
-
-  const transactions = query.data?.transactions ?? []
-  const meta = query.data?.meta
-  const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
-  const heroSecondaryLabel =
-    appliedFilters.sort === 'newest' ? 'Latest in list' : getSortLabel(appliedFilters.sort)
-
-  function markCategoryManual() {
-    setCategoryManuallySet(true)
-  }
-
-  function resetCategoryManualTracking() {
-    setCategoryManuallySet(false)
-  }
-
   return (
-    <section className="transactions-page">
+    <section className={isInitialLoading || hasLoadError ? undefined : 'transactions-page'}>
+      {isInitialLoading ? (
+        <>
+          <h1>Transactions</h1>
+          <p>Loading transactions...</p>
+        </>
+      ) : hasLoadError ? (
+        <>
+          <h1>Transactions</h1>
+          <p className="error">Failed to load transactions.</p>
+        </>
+      ) : (
+        <>
       <div className="transactions-hero">
         <div>
           <h1>Transactions</h1>
@@ -671,6 +666,8 @@ export function TransactionsPage() {
         onConfirm={onConfirmDelete}
         onCancel={() => setDeleteTargetId(null)}
       />
+        </>
+      )}
     </section>
   )
 }
