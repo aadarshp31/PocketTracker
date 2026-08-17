@@ -1,3 +1,4 @@
+import { Link, useNavigate } from 'react-router-dom'
 import {
   Bar,
   BarChart,
@@ -14,6 +15,7 @@ import {
 } from 'recharts'
 import { formatCurrency } from '../../../shared/utils/currency'
 import { safeLocaleDateString } from '../../../shared/utils/importDate'
+import { buildDashboardCategoryTransactionsUrl } from '../../transactions/utils/transactionUrlSync'
 import type { CategoryData, DailyPatternData, MonthlyTrendData, ProjectionData, SpikesData } from '../types'
 
 const chartPalette = ['#1d4ed8', '#f59e0b', '#059669', '#dc2626', '#7c3aed', '#0891b2']
@@ -45,11 +47,24 @@ interface DashboardChartsProps {
   spikesData: SpikesData
   trendData: MonthlyTrendData
   projection?: ProjectionData
+  dashboardMonth: number
+  dashboardYear: number
 }
 
-export default function DashboardCharts({ currency, categoryData, patternData, spikesData, trendData }: DashboardChartsProps) {
+export default function DashboardCharts({
+  currency,
+  categoryData,
+  patternData,
+  spikesData,
+  trendData,
+  dashboardMonth,
+  dashboardYear,
+}: DashboardChartsProps) {
+  const navigate = useNavigate()
+
   const categoryChartData = categoryData.categories.map((category, index) => ({
     label: category.categoryName,
+    categoryId: category.categoryId,
     value: Number(category.total),
     percentage: Number(category.percentage),
     fill: chartPalette[index % chartPalette.length],
@@ -99,7 +114,7 @@ export default function DashboardCharts({ currency, categoryData, patternData, s
         <div className="dashboard-card-header">
           <div>
             <h2>Category Breakdown</h2>
-            <p className="muted">Where this month's spending is going.</p>
+            <p className="muted">Click a category to view its transactions for this month.</p>
           </div>
           <strong>{formatCurrency(categoryData.totalExpenses, currency)}</strong>
         </div>
@@ -118,6 +133,13 @@ export default function DashboardCharts({ currency, categoryData, patternData, s
                     innerRadius={68}
                     outerRadius={108}
                     paddingAngle={3}
+                    style={{ cursor: 'pointer' }}
+                    onClick={(_, index) => {
+                      const category = categoryChartData[index]
+                      if (category?.categoryId) {
+                        navigate(buildDashboardCategoryTransactionsUrl(category.categoryId, dashboardMonth, dashboardYear))
+                      }
+                    }}
                   >
                     {categoryChartData.map((entry) => (
                       <Cell key={entry.label} fill={entry.fill} />
@@ -129,13 +151,17 @@ export default function DashboardCharts({ currency, categoryData, patternData, s
             </div>
             <div className="dashboard-legend-list">
               {categoryChartData.map((category) => (
-                <div className="dashboard-legend-row" key={category.label}>
+                <Link
+                  key={category.categoryId}
+                  to={buildDashboardCategoryTransactionsUrl(category.categoryId, dashboardMonth, dashboardYear)}
+                  className="dashboard-legend-row dashboard-legend-link"
+                >
                   <span className="dashboard-legend-name">
                     <span className="dashboard-color-dot" style={{ backgroundColor: category.fill }} />
                     {category.label}
                   </span>
                   <span>{category.percentage.toFixed(1)}%</span>
-                </div>
+                </Link>
               ))}
             </div>
           </>

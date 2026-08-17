@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useSearchParams } from 'react-router-dom'
 import { useTransactions } from '../features/transactions/hooks/useTransactions'
+import { useTransactionSummary } from '../features/transactions/hooks/useTransactionSummary'
 import { useCategories } from '../features/transactions/hooks/useCategories'
 import { useCreateTransaction } from '../features/transactions/hooks/useCreateTransaction'
 import { useCreateCategory } from '../features/transactions/hooks/useCreateCategory'
@@ -8,8 +9,26 @@ import { useUpdateTransaction } from '../features/transactions/hooks/useUpdateTr
 import { useDeleteTransaction } from '../features/transactions/hooks/useDeleteTransaction'
 import { useProfile } from '../features/profile/hooks/useProfile'
 import { formatCurrency } from '../shared/utils/currency'
-import { todayString, safeLocaleDateString } from '../shared/utils/importDate'
-import type { TransactionType } from '../features/transactions/types'
+import { todayString } from '../shared/utils/importDate'
+import type { Transaction, TransactionType } from '../features/transactions/types'
+import { TransactionFilters, defaultTransactionFilters } from '../features/transactions/components/TransactionFilters'
+import { TransactionList } from '../features/transactions/components/TransactionList'
+import { TransactionPagination } from '../features/transactions/components/TransactionPagination'
+import { TransactionTotalsBar } from '../features/transactions/components/TransactionTotalsBar'
+import { ConfirmDialog } from '../shared/components/ConfirmDialog'
+import { useDebouncedValue } from '../shared/hooks/useDebouncedValue'
+import {
+  buildTransactionSearchParams,
+  parseTransactionUrlState,
+} from '../features/transactions/utils/transactionUrlSync'
+import {
+  filtersToApiParams,
+  getEmptyListMessage,
+  getSortLabel,
+  hasActiveFilters,
+  isPeriodScoped,
+  type TransactionFilterState,
+} from '../features/transactions/utils/transactionFilters'
 
 interface TransactionFormState {
   amount: string
@@ -48,18 +67,43 @@ function toPayload(form: TransactionFormState) {
 }
 
 export function TransactionsPage() {
-  const [page, setPage] = useState(1)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialUrlState = useMemo(() => parseTransactionUrlState(searchParams), [])
+  const [page, setPage] = useState(initialUrlState.page)
+  const [limit, setLimit] = useState(initialUrlState.limit)
+  const [filters, setFilters] = useState<TransactionFilterState>(initialUrlState.filters)
   const [form, setForm] = useState<TransactionFormState>(initialFormState)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [formError, setFormError] = useState('')
   const [formNotice, setFormNotice] = useState('')
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryError, setNewCategoryError] = useState('')
   const amountInputRef = useRef<HTMLInputElement | null>(null)
+  const quickEntryRef = useRef<HTMLDivElement | null>(null)
 
-  const limit = 10
+  const debouncedSearch = useDebouncedValue(filters.search)
 
-  const query = useTransactions({ page, limit })
+  const filterApiParams = useMemo(
+    () =>
+      filtersToApiParams({
+        ...filters,
+        search: debouncedSearch,
+      }),
+    [filters, debouncedSearch]
+  )
+
+  const listParams = useMemo(
+    () => ({
+      ...filterApiParams,
+      page,
+      limit,
+    }),
+    [filterApiParams, page, limit]
+  )
+
+  const query = useTransactions(listParams)
+  const summaryQuery = useTransactionSummary(filterApiParams)
   const categoriesQuery = useCategories()
   const profileQuery = useProfile()
   const createMutation = useCreateTransaction()
@@ -68,11 +112,60 @@ export function TransactionsPage() {
   const deleteMutation = useDeleteTransaction()
 
   const categories = categoriesQuery.data?.categories ?? []
+  const categoryNames = useMemo(
+    () => new Map(categories.map((category) => [category.id, category.name])),
+    [categories]
+  )
   const filteredCategories = useMemo(
     () => categories.filter((cat) => cat.type === form.type),
     [categories, form.type]
   )
   const recentTransaction = query.data?.transactions?.[0] ?? null
+  const filtersActive = hasActiveFilters(filters)
+  const emptyListMessage = getEmptyListMessage(filters)
+  const isInitialLoading =
+    (query.isLoading && !query.data) || categoriesQuery.isLoading || profileQuery.isLoading
+  const isListFetching = query.isFetching && !isInitialLoading
+
+  useEffect(() => {
+    const parsed = parseTransactionUrlState(searchParams)
+    setFilters(parsed.filters)
+    setPage(parsed.page)
+    setLimit(parsed.limit)
+  }, [searchParams])
+
+  useEffect(() => {
+    const nextParams = buildTransactionSearchParams(filters, page, limit, debouncedSearch)
+    if (nextParams.toString() !== searchParams.toString()) {
+      setSearchParams(nextParams, { replace: true })
+    }
+  }, [
+    filters.period,
+    filters.customDateFrom,
+    filters.customDateTo,
+    filters.type,
+    filters.category_id,
+    filters.sort,
+    page,
+    limit,
+    debouncedSearch,
+    searchParams,
+    setSearchParams,
+  ])
+
+  useEffect(() => {
+    if (!editingId) {
+      amountInputRef.current?.focus()
+    }
+  }, [editingId])
+
+  const totalPages = query.data?.meta?.totalPages ?? 0
+
+  useEffect(() => {
+    if (totalPages > 0 && page > totalPages) {
+      setPage(totalPages)
+    }
+  }, [page, totalPages])
 
   const isMutating =
     createMutation.isPending ||
@@ -80,11 +173,25 @@ export function TransactionsPage() {
     deleteMutation.isPending ||
     createCategoryMutation.isPending
 
-  useEffect(() => {
-    if (!editingId) {
-      amountInputRef.current?.focus()
-    }
-  }, [editingId])
+  function updateFilters(next: TransactionFilterState) {
+    setFilters(next)
+    setPage(1)
+  }
+
+  function clearFilters() {
+    setFilters(defaultTransactionFilters)
+    setPage(1)
+  }
+
+  function showAllTime() {
+    setFilters((prev) => ({ ...prev, period: 'all-time' }))
+    setPage(1)
+  }
+
+  function updateLimit(nextLimit: number) {
+    setLimit(nextLimit)
+    setPage(1)
+  }
 
   function validateForm() {
     if (!form.amount || Number(form.amount) <= 0) return 'Amount must be greater than 0.'
@@ -129,14 +236,7 @@ export function TransactionsPage() {
     amountInputRef.current?.focus()
   }
 
-  function onEdit(transaction: {
-    id: string
-    amount: string
-    type: TransactionType
-    description: string | null
-    category_id: string
-    date: string
-  }) {
+  function onEdit(transaction: Transaction) {
     setFormNotice('')
     setEditingId(transaction.id)
     setForm({
@@ -146,10 +246,41 @@ export function TransactionsPage() {
       category_id: transaction.category_id,
       date: String(transaction.date).slice(0, 10),
     })
+    quickEntryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  async function onDelete(transactionId: string) {
-    await deleteMutation.mutateAsync(transactionId)
+  function onDeleteRequest(transactionId: string) {
+    setDeleteTargetId(transactionId)
+  }
+
+  async function onConfirmDelete() {
+    if (!deleteTargetId) return
+
+    await deleteMutation.mutateAsync(deleteTargetId)
+
+    if (editingId === deleteTargetId) {
+      resetForm(true)
+    }
+
+    setDeleteTargetId(null)
+  }
+
+  async function onCategoryChange(transactionId: string, categoryId: string) {
+    const transaction = query.data?.transactions.find((item) => item.id === transactionId)
+    if (!transaction || transaction.category_id === categoryId) return
+
+    try {
+      await updateMutation.mutateAsync({
+        transactionId,
+        payload: { category_id: categoryId },
+      })
+
+      if (editingId === transactionId) {
+        setForm((prev) => ({ ...prev, category_id: categoryId }))
+      }
+    } catch {
+      setFormNotice('Could not update category. Please try again.')
+    }
   }
 
   async function onCreateCategory() {
@@ -195,7 +326,7 @@ export function TransactionsPage() {
     }))
   }
 
-  if (query.isLoading || categoriesQuery.isLoading || profileQuery.isLoading) {
+  if (isInitialLoading) {
     return (
       <section>
         <h1>Transactions</h1>
@@ -216,6 +347,7 @@ export function TransactionsPage() {
   const transactions = query.data?.transactions ?? []
   const meta = query.data?.meta
   const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
+  const heroSecondaryLabel = filters.sort === 'newest' ? 'Latest in list' : getSortLabel(filters.sort)
 
   return (
     <section className="transactions-page">
@@ -239,17 +371,17 @@ export function TransactionsPage() {
         </div>
         <div className="transactions-hero-stats">
           <div className="transactions-stat-card">
-            <span className="transactions-stat-label">Shown here</span>
-            <strong>{transactions.length}</strong>
+            <span className="transactions-stat-label">Matching</span>
+            <strong>{meta?.totalCount ?? 0}</strong>
           </div>
           <div className="transactions-stat-card">
-            <span className="transactions-stat-label">Latest</span>
+            <span className="transactions-stat-label">{heroSecondaryLabel}</span>
             <strong>{recentTransaction ? formatCurrency(recentTransaction.amount, currency) : 'No entries'}</strong>
           </div>
         </div>
       </div>
 
-      <div className="table-wrap quick-entry-card">
+      <div className="table-wrap quick-entry-card" ref={quickEntryRef}>
         <div className="quick-entry-header">
           <div>
             <span className={`quick-entry-badge ${editingId ? 'is-editing' : 'is-adding'}`}>
@@ -409,64 +541,60 @@ export function TransactionsPage() {
         </form>
       </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Amount</th>
-              <th>Description</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {transactions.length === 0 ? (
-              <tr>
-                <td colSpan={5}>No transactions found.</td>
-              </tr>
-            ) : (
-              transactions.map((item) => (
-                <tr key={item.id}>
-                  <td>{safeLocaleDateString(item.date)}</td>
-                  <td>
-                    <span className={`transaction-type-badge ${item.type === 'income' ? 'is-income' : 'is-expense'}`}>
-                      {item.type}
-                    </span>
-                  </td>
-                  <td>{formatCurrency(item.amount, currency)}</td>
-                  <td>{item.description ?? '-'}</td>
-                  <td className="transaction-actions-cell">
-                    <button onClick={() => onEdit(item)} disabled={isMutating}>
-                      Edit
-                    </button>
-                    <button className="danger-button" onClick={() => onDelete(item.id)} disabled={isMutating}>
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+      <TransactionFilters
+        filters={filters}
+        categories={categories}
+        disabled={isMutating}
+        onChange={updateFilters}
+        onClear={clearFilters}
+      />
 
-      {meta && (
-        <div className="pager">
-          <button onClick={() => setPage((prev) => Math.max(1, prev - 1))} disabled={page === 1 || isMutating}>
-            Previous
-          </button>
-          <span>
-            Page {meta.page} of {meta.totalPages}
-          </span>
-          <button
-            onClick={() => setPage((prev) => Math.min(meta.totalPages, prev + 1))}
-            disabled={page >= meta.totalPages || isMutating}
-          >
-            Next
-          </button>
-        </div>
-      )}
+      <TransactionTotalsBar
+        summary={summaryQuery.data}
+        currency={currency}
+        isLoading={summaryQuery.isFetching}
+      />
+
+      <TransactionList
+        transactions={transactions}
+        categories={categories}
+        categoryNames={categoryNames}
+        currency={currency}
+        editingId={editingId}
+        emptyMessage={emptyListMessage}
+        showClearFilters={filtersActive}
+        showAllTimeAction={!filtersActive && isPeriodScoped(filters)}
+        isMutating={isMutating}
+        onEdit={onEdit}
+        onDelete={onDeleteRequest}
+        onCategoryChange={onCategoryChange}
+        onClearFilters={clearFilters}
+        onShowAllTime={showAllTime}
+      />
+
+      {isListFetching ? <p className="muted transaction-list-loading">Updating list...</p> : null}
+
+      {meta ? (
+        <TransactionPagination
+          meta={meta}
+          page={page}
+          limit={limit}
+          disabled={isMutating || isListFetching}
+          onPageChange={setPage}
+          onLimitChange={updateLimit}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={deleteTargetId !== null}
+        title="Delete transaction?"
+        message="This transaction will be permanently removed. This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Keep transaction"
+        isConfirming={deleteMutation.isPending}
+        onConfirm={onConfirmDelete}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </section>
   )
 }

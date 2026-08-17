@@ -166,6 +166,8 @@ export function DashboardPage() {
             patternData={pattern}
             spikesData={spikes}
             projection={projection}
+            dashboardMonth={selectedMonth}
+            dashboardYear={selectedYear}
           />
         </Suspense>
       ) : null}

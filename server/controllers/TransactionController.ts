@@ -1,11 +1,12 @@
 import { NextFunction, Request, Response } from "express";
-import TransactionService from "../services/TransactionService";
+import TransactionService, { GetAllTransactionsOptions } from "../services/TransactionService";
 import UserService from "../services/UserService";
 import AuthService from "../services/AuthService";
-import { Order } from "sequelize";
 
 /** Maximum transactions accepted by the bulk import endpoints per request. */
 export const BULK_IMPORT_MAX_TRANSACTIONS = 500;
+
+const ALLOWED_SORT_COLUMNS = new Set(["date", "amount", "type", "createdAt"]);
 
 export default class TransactionController {
   private transactionService: TransactionService;
@@ -21,6 +22,75 @@ export default class TransactionController {
   private async getUserIdFromSupabaseId(supabaseId: string): Promise<string | null> {
     const user = await this.authService.getUserBySuperbaseId(supabaseId);
     return user ? (user.get("id") as string) : null;
+  }
+
+  private parseListFilters(req: Request): GetAllTransactionsOptions {
+    const options: GetAllTransactionsOptions = {};
+
+    if (req.query.limit) {
+      const parsedLimit = parseInt(req.query.limit as string, 10);
+      options.limit = Number.isFinite(parsedLimit) ? parsedLimit : 10;
+    }
+    if (req.query.page) {
+      const parsedPage = parseInt(req.query.page as string, 10);
+      options.page = Number.isFinite(parsedPage) ? parsedPage : 1;
+    }
+
+    if (req.query.type === "income" || req.query.type === "expense") {
+      options.type = req.query.type;
+    }
+
+    if (typeof req.query.category_id === "string" && req.query.category_id.trim()) {
+      options.category_id = req.query.category_id.trim();
+    }
+
+    if (typeof req.query.dateFrom === "string" && req.query.dateFrom.trim()) {
+      options.dateFrom = req.query.dateFrom.trim();
+    }
+
+    if (typeof req.query.dateTo === "string" && req.query.dateTo.trim()) {
+      options.dateTo = req.query.dateTo.trim();
+    }
+
+    if (typeof req.query.search === "string" && req.query.search.trim()) {
+      options.search = req.query.search.trim();
+    }
+
+    const sortColumn = typeof req.query.sort === "string" ? req.query.sort : "date";
+    const sortOrder = req.query.order === "asc" ? "asc" : "desc";
+    if (ALLOWED_SORT_COLUMNS.has(sortColumn)) {
+      options.order = [[sortColumn, sortOrder]];
+    } else {
+      options.order = [["date", "desc"]];
+    }
+
+    return options;
+  }
+
+  async getSummary(req: Request, res: Response) {
+    try {
+      if (!req.user?.id) {
+        res.status(401).json({ message: "User not authenticated" });
+        return;
+      }
+
+      const userId = await this.getUserIdFromSupabaseId(req.user.id);
+
+      if (!userId) {
+        res.status(404).json({ message: "User profile not found in database" });
+        return;
+      }
+
+      const filters = this.parseListFilters(req);
+      const summary = await this.transactionService.getTransactionSummary(userId, filters);
+
+      res.json(summary);
+    } catch (error: any) {
+      res.status(400).json({
+        message: "something went wrong",
+        error: error.message,
+      });
+    }
   }
 
   async getAll(req: Request, res: Response) {
@@ -42,11 +112,7 @@ export default class TransactionController {
         return;
       }
 
-      const options: {limit?: number, page?: number, order?: Order} = {};
-      
-      if(req.query.limit) options.limit = parseInt((req.query.limit as string));
-      if(req.query.page) options.page = parseInt((req.query.page as string));
-      if (req.query.sort) options.order = [[req.query.sort as string, req.query.order ? req.query.order as string : "desc"]]
+      const options = this.parseListFilters(req);
 
       const result = await this.transactionService.getAllTransactions(userId, options);
 

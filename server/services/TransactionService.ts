@@ -1,7 +1,18 @@
-import { Op, Order } from "sequelize";
+import { Op, Order, WhereOptions } from "sequelize";
 import TransactionModel from "../models/TransactionModel";
 import CategoryModel from "../models/CategoryModel";
 import Transaction from "../interfaces/Transaction";
+
+export interface GetAllTransactionsOptions {
+  page?: number;
+  limit?: number;
+  order?: Order;
+  type?: "income" | "expense";
+  category_id?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+}
 
 export interface BulkCreatePayload {
   amount: number;
@@ -20,37 +31,83 @@ export default class TransactionService {
 
   constructor() { }
 
-  async getAllTransactions(userId: string, options: { page?: number, limit?: number, order?: Order } = { page: 1, limit: 10, order: [["date", "desc"]] }) {
-    const count = await TransactionModel.count({
-      where: {
-        user_id: userId
-      }
-    });
+  private buildTransactionWhere(userId: string, filters: GetAllTransactionsOptions): WhereOptions {
+    const where: WhereOptions = { user_id: userId };
 
-    options.page = options.page ? options.page : 1;
-    options.limit = options.limit ? options.limit : 10;
-    options.order = options.order ? options.order : [["date", "desc"]];
+    if (filters.type === "income" || filters.type === "expense") {
+      where.type = filters.type;
+    }
 
-    const totalPages = Math.ceil(count / options.limit);
-    const offset = (options.page - 1) * options.limit;
+    if (filters.category_id) {
+      where.category_id = filters.category_id;
+    }
+
+    if (filters.dateFrom && filters.dateTo) {
+      where.date = { [Op.between]: [filters.dateFrom, filters.dateTo] };
+    } else if (filters.dateFrom) {
+      where.date = { [Op.gte]: filters.dateFrom };
+    } else if (filters.dateTo) {
+      where.date = { [Op.lte]: filters.dateTo };
+    }
+
+    if (filters.search?.trim()) {
+      const escaped = filters.search.trim().replace(/[%_\\]/g, '\\$&')
+      where.description = { [Op.iLike]: `%${escaped}%` };
+    }
+
+    return where;
+  }
+
+  async getAllTransactions(
+    userId: string,
+    options: GetAllTransactionsOptions = { page: 1, limit: 10, order: [["date", "desc"]] }
+  ) {
+    const page = options.page && options.page > 0 ? options.page : 1;
+    const limit = Math.min(options.limit && options.limit > 0 ? options.limit : 10, 100);
+    const order = options.order ?? [["date", "desc"]];
+    const where = this.buildTransactionWhere(userId, options);
+
+    const count = await TransactionModel.count({ where });
+
+    const totalPages = Math.max(1, Math.ceil(count / limit));
+    const offset = (page - 1) * limit;
 
     const transactions = await TransactionModel.findAll({
-      limit: options.limit,
-      offset: offset,
-      order: options.order,
-      where: {
-        "user_id": userId
-      }
+      limit,
+      offset,
+      order,
+      where,
     });
 
     return {
       transactions,
       meta: {
-        page: options.page,
-        limit: options.limit,
-        totalPages: totalPages,
-        totalCount: count
-      }
+        page,
+        limit,
+        totalPages: count === 0 ? 0 : totalPages,
+        totalCount: count,
+      },
+    };
+  }
+
+  async getTransactionSummary(userId: string, filters: GetAllTransactionsOptions = {}) {
+    const where = this.buildTransactionWhere(userId, filters);
+
+    const [incomeRaw, expensesRaw, transactionCount] = await Promise.all([
+      TransactionModel.sum("amount", { where: { ...where, type: "income" } }),
+      TransactionModel.sum("amount", { where: { ...where, type: "expense" } }),
+      TransactionModel.count({ where }),
+    ]);
+
+    const income = Number(incomeRaw ?? 0);
+    const expenses = Number(expensesRaw ?? 0);
+    const net = income - expenses;
+
+    return {
+      income: income.toFixed(2),
+      expenses: expenses.toFixed(2),
+      net: net.toFixed(2),
+      transactionCount,
     };
   }
 
@@ -96,8 +153,28 @@ export default class TransactionService {
 
     if (transactionDetails.amount) transaction.set("amount", transactionDetails.amount);
     if (transactionDetails.type) transaction.set("type", transactionDetails.type);
-    if (transactionDetails.description) transaction.set("description", transactionDetails.description);
+    if (transactionDetails.description !== undefined) {
+      transaction.set("description", transactionDetails.description);
+    }
     if (transactionDetails.date) transaction.set("date", transactionDetails.date);
+
+    if (transactionDetails.category_id) {
+      const category = await CategoryModel.findOne({
+        where: { id: transactionDetails.category_id },
+        attributes: ["id", "type"],
+      });
+
+      if (!category) {
+        throw new Error("Category not found");
+      }
+
+      const effectiveType = (transactionDetails.type ?? transaction.get("type")) as string;
+      if (category.get("type") !== effectiveType) {
+        throw new Error("Category type does not match transaction type");
+      }
+
+      transaction.set("category_id", transactionDetails.category_id);
+    }
 
     const transactions = await transaction.save();
 
