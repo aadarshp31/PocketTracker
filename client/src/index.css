@@ -2378,3 +2378,78 @@ button:disabled {
   gap: 0.2rem;
 }
 
+.category-keyword-settings {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.category-keyword-section h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.category-keyword-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.category-keyword-editor {
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 0.75rem;
+  padding: 0.85rem;
+  background: #fff;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.category-keyword-editor-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.category-keyword-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.category-keyword-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  font-size: 0.85rem;
+}
+
+.category-keyword-chip span {
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.category-keyword-empty {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.category-keyword-add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.category-keyword-add-form input {
+  min-width: 0;
+}
+
+.quick-entry-auto-category-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #166534;
+}
+

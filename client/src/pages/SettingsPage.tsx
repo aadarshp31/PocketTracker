@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useProfile } from '../features/profile/hooks/useProfile'
 import { useUpdateProfile } from '../features/profile/hooks/useUpdateProfile'
 import { useAuth } from '../features/auth/contexts/AuthContext'
+import { CategoryKeywordSettings } from '../features/categorization/components/CategoryKeywordSettings'
 
 const currencyOptions = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD', 'JPY']
 
@@ -385,6 +386,10 @@ export function ProfilePage() {
           )}
         </div>
       ) : null}
+
+      <div className="table-wrap" style={{ padding: '1rem', maxWidth: '960px', marginTop: '1rem' }}>
+        <CategoryKeywordSettings />
+      </div>
     </section>
   )
 }

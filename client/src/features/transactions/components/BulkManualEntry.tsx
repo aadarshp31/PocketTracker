@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Plus, Trash2, TrendingUp } from 'lucide-react'
 import { useCategories } from '../hooks/useCategories'
+import { useCategoryKeywordRules } from '../../categorization/hooks/useCategoryKeywords'
+import { categorizeTransaction } from '../../../shared/utils/categorizeTransaction'
 import { formatCurrency } from '../../../shared/utils/currency'
 import { todayString } from '../../../shared/utils/importDate'
 
@@ -29,8 +31,15 @@ export interface BulkManualEntryProps {
 
 export function BulkManualEntry({ onTransactionsReady, onError, isLoading = false, currency = 'INR' }: BulkManualEntryProps) {
   const { data: categoriesData } = useCategories()
+  const { rules: categoryKeywordRules } = useCategoryKeywordRules()
   const [transactions, setTransactions] = useState<ManualTransaction[]>([])
   const [quickAddCategories, setQuickAddCategories] = useState<QuickAddCategory[]>([])
+  const manualCategoryRowsRef = useRef<Set<string>>(new Set())
+  const debounceTimersRef = useRef<Map<string, number>>(new Map())
+
+  const categories = useMemo(() => categoriesData?.categories || [], [categoriesData?.categories])
+  const incomeCategories = useMemo(() => categories.filter((cat) => cat.type === 'income'), [categories])
+  const expenseCategories = useMemo(() => categories.filter((cat) => cat.type === 'expense'), [categories])
 
   useEffect(() => {
     if (transactions.length === 0) {
@@ -53,6 +62,13 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
     }
   }, [categoriesData])
 
+  useEffect(() => {
+    return () => {
+      debounceTimersRef.current.forEach((timerId) => window.clearTimeout(timerId))
+      debounceTimersRef.current.clear()
+    }
+  }, [])
+
   const addRow = () => {
     const newRow: ManualTransaction = {
       id: `temp-${Date.now()}-${Math.random()}`,
@@ -69,25 +85,93 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
       onError('You must have at least one transaction')
       return
     }
+    manualCategoryRowsRef.current.delete(id)
+    const timerId = debounceTimersRef.current.get(id)
+    if (timerId) {
+      window.clearTimeout(timerId)
+      debounceTimersRef.current.delete(id)
+    }
     setTransactions((prev) => prev.filter((tx) => tx.id !== id))
   }
 
-  const updateTransaction = (id: string, field: keyof ManualTransaction, value: any) => {
+  function scheduleAutoCategory(rowId: string, description: string, type: 'income' | 'expense') {
+    const existingTimer = debounceTimersRef.current.get(rowId)
+    if (existingTimer) {
+      window.clearTimeout(existingTimer)
+    }
+
+    const timerId = window.setTimeout(() => {
+      if (manualCategoryRowsRef.current.has(rowId)) {
+        return
+      }
+
+      const suggestedCategoryId = categorizeTransaction(description, type, categories, categoryKeywordRules)
+      if (!suggestedCategoryId) {
+        return
+      }
+
+      setTransactions((prev) => prev.map((tx) => {
+        if (tx.id !== rowId || manualCategoryRowsRef.current.has(rowId)) {
+          return tx
+        }
+        return { ...tx, category_id: suggestedCategoryId }
+      }))
+    }, 300)
+
+    debounceTimersRef.current.set(rowId, timerId)
+  }
+
+  const updateTransaction = (id: string, field: keyof ManualTransaction, value: ManualTransaction[keyof ManualTransaction]) => {
+    if (field === 'category_id') {
+      if (value) {
+        manualCategoryRowsRef.current.add(id)
+      } else {
+        manualCategoryRowsRef.current.delete(id)
+      }
+    }
+
+    if (field === 'type') {
+      manualCategoryRowsRef.current.delete(id)
+    }
+
+    let nextDescription = ''
+    let nextType: 'income' | 'expense' = 'expense'
+
     setTransactions((prev) =>
-      prev.map((tx) =>
-        tx.id === id
-          ? {
-            ...tx,
-            [field]: value,
-          }
-          : tx
-      )
+      prev.map((tx) => {
+        if (tx.id !== id) return tx
+
+        const nextTransaction = {
+          ...tx,
+          [field]: value,
+        } as ManualTransaction
+
+        if (field === 'type') {
+          nextTransaction.category_id = undefined
+          nextType = value as 'income' | 'expense'
+          nextDescription = nextTransaction.description
+        } else if (field === 'description') {
+          nextDescription = String(value)
+          nextType = nextTransaction.type
+        } else {
+          nextDescription = nextTransaction.description
+          nextType = nextTransaction.type
+        }
+
+        return nextTransaction
+      })
     )
+
+    if (field === 'description' || field === 'type') {
+      scheduleAutoCategory(id, nextDescription, nextType)
+    }
   }
 
   const addQuickCategory = (category: QuickAddCategory) => {
+    const rowId = `temp-${Date.now()}-${Math.random()}`
+    manualCategoryRowsRef.current.add(rowId)
     const newRow: ManualTransaction = {
-      id: `temp-${Date.now()}-${Math.random()}`,
+      id: rowId,
       date: todayString(),
       description: '',
       amount: 0,
@@ -119,10 +203,6 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
 
     onTransactionsReady(transactions)
   }
-
-  const categories = (categoriesData?.categories || [])
-  const incomeCategories = categories.filter((cat: any) => cat.type === 'income')
-  const expenseCategories = categories.filter((cat: any) => cat.type === 'expense')
 
   const totalAmount = transactions.reduce((sum, tx) => {
     return sum + (tx.type === 'income' ? tx.amount : -tx.amount)

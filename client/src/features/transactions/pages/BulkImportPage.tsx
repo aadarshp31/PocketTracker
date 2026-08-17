@@ -7,6 +7,7 @@ import { useBulkImportSubmit, useBulkImportConfig } from '../hooks/useBulkImport
 import { useProfile } from '../../profile/hooks/useProfile'
 import { useCategories } from '../hooks/useCategories'
 import { buildImportReview, type ImportRowInput } from '../../../shared/utils/categorizeTransaction'
+import { useCategoryKeywordRules } from '../../categorization/hooks/useCategoryKeywords'
 
 export default function BulkImportPage() {
   const [activeTab, setActiveTab] = useState<'csv' | 'manual'>('csv')
@@ -22,6 +23,7 @@ export default function BulkImportPage() {
   const profileQuery = useProfile()
   const categoriesQuery = useCategories()
   const bulkConfigQuery = useBulkImportConfig()
+  const { rules: categoryKeywordRules } = useCategoryKeywordRules()
   const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
   const maxBatch = bulkConfigQuery.data?.maxTransactionsPerBatch ?? 500
 
@@ -42,7 +44,7 @@ export default function BulkImportPage() {
       return
     }
 
-    const review = buildImportReview(transactions, categories)
+    const review = buildImportReview(transactions, categories, categoryKeywordRules)
     setPreviewData(review)
     setStep('preview')
   }
@@ -109,6 +111,7 @@ export default function BulkImportPage() {
           <h1>Bulk Import</h1>
           <p className="muted bulk-import-subtitle">
             Upload a CSV statement or stage multiple entries in one pass, review categories, then import when ready.
+            Configure personal keyword rules in Profile settings to improve auto-categorization.
           </p>
         </div>
       </div>

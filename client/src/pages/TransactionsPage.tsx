@@ -29,6 +29,8 @@ import {
   isPeriodScoped,
   type TransactionFilterState,
 } from '../features/transactions/utils/transactionFilters'
+import { useCategoryKeywordRules } from '../features/categorization/hooks/useCategoryKeywords'
+import { useAutoCategorize } from '../features/categorization/hooks/useAutoCategorize'
 
 interface TransactionFormState {
   amount: string
@@ -83,6 +85,7 @@ export function TransactionsPage() {
   const [newCategoryError, setNewCategoryError] = useState('')
   const amountInputRef = useRef<HTMLInputElement | null>(null)
   const quickEntryRef = useRef<HTMLDivElement | null>(null)
+  const [categoryManuallySet, setCategoryManuallySet] = useState(false)
 
   const filterApiParams = useMemo(() => filtersToApiParams(appliedFilters), [appliedFilters])
   const hasPendingFilterChanges = !filtersAreEqual(draftFilters, appliedFilters)
@@ -106,6 +109,15 @@ export function TransactionsPage() {
   const deleteMutation = useDeleteTransaction()
 
   const categories = categoriesQuery.data?.categories ?? []
+  const { rules: categoryKeywordRules } = useCategoryKeywordRules()
+  const suggestedCategoryId = useAutoCategorize({
+    description: form.description,
+    type: form.type,
+    categories,
+    userRules: categoryKeywordRules,
+    categoryManuallySet,
+    enabled: !editingId,
+  })
   const categoryNames = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories]
@@ -114,6 +126,15 @@ export function TransactionsPage() {
     () => categories.filter((cat) => cat.type === form.type),
     [categories, form.type]
   )
+  const autoSelectedCategoryName = useMemo(() => {
+    if (categoryManuallySet || !form.category_id || !form.description.trim()) {
+      return null
+    }
+    if (form.category_id !== suggestedCategoryId) {
+      return null
+    }
+    return categoryNames.get(form.category_id) ?? null
+  }, [categoryManuallySet, form.category_id, form.description, suggestedCategoryId, categoryNames])
   const recentTransaction = query.data?.transactions?.[0] ?? null
   const filtersActive = hasActiveFilters(appliedFilters)
   const emptyListMessage = getEmptyListMessage(appliedFilters)
@@ -209,6 +230,7 @@ export function TransactionsPage() {
     setEditingId(null)
     setFormError('')
     setFormNotice('')
+    resetCategoryManualTracking()
   }
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -232,6 +254,7 @@ export function TransactionsPage() {
     } else {
       await createMutation.mutateAsync(toPayload(form))
       setForm(buildQuickAddState(form))
+      resetCategoryManualTracking()
       setFormNotice('Saved. Amount and note cleared for the next entry.')
     }
 
@@ -243,6 +266,7 @@ export function TransactionsPage() {
   function onEdit(transaction: Transaction) {
     setFormNotice('')
     setEditingId(transaction.id)
+    markCategoryManual()
     setForm({
       amount: transaction.amount,
       type: transaction.type,
@@ -299,6 +323,7 @@ export function TransactionsPage() {
     )
 
     if (existing) {
+      markCategoryManual()
       setForm((prev) => ({ ...prev, category_id: existing.id }))
       setNewCategoryError('')
       setFormNotice('Selected existing category.')
@@ -314,6 +339,7 @@ export function TransactionsPage() {
 
     const createdCategoryId = created.categories?.id
     if (createdCategoryId) {
+      markCategoryManual()
       setForm((prev) => ({ ...prev, category_id: createdCategoryId }))
     }
 
@@ -353,6 +379,27 @@ export function TransactionsPage() {
   const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
   const heroSecondaryLabel =
     appliedFilters.sort === 'newest' ? 'Latest in list' : getSortLabel(appliedFilters.sort)
+
+  useEffect(() => {
+    if (editingId || categoryManuallySet || !suggestedCategoryId) {
+      return
+    }
+
+    setForm((prev) => {
+      if (prev.category_id === suggestedCategoryId) {
+        return prev
+      }
+      return { ...prev, category_id: suggestedCategoryId }
+    })
+  }, [suggestedCategoryId, categoryManuallySet, editingId])
+
+  function markCategoryManual() {
+    setCategoryManuallySet(true)
+  }
+
+  function resetCategoryManualTracking() {
+    setCategoryManuallySet(false)
+  }
 
   return (
     <section className="transactions-page">
@@ -394,7 +441,7 @@ export function TransactionsPage() {
             </span>
             <h2>{editingId ? 'Update this transaction' : 'Add a transaction in seconds'}</h2>
             <p className="muted quick-entry-helper">
-              Pick the type once, tap a category, enter the amount, and keep moving.
+              Pick the type once, tap a category, enter the amount, and keep moving. Notes can auto-select a category from your keyword rules.
             </p>
           </div>
           <button type="button" className="ghost-button" onClick={() => resetForm(true)} disabled={isMutating}>
@@ -409,13 +456,14 @@ export function TransactionsPage() {
                 key={type}
                 type="button"
                 className={`type-pill ${form.type === type ? 'is-active' : ''}`}
-                onClick={() =>
+                onClick={() => {
+                  resetCategoryManualTracking()
                   setForm((prev) => ({
                     ...prev,
                     type,
                     category_id: prev.type === type ? prev.category_id : '',
                   }))
-                }
+                }}
                 disabled={isMutating}
               >
                 {type === 'expense' ? 'Expense' : 'Income'}
@@ -507,7 +555,10 @@ export function TransactionsPage() {
                   key={category.id}
                   type="button"
                   className={`category-chip ${form.category_id === category.id ? 'is-selected' : ''}`}
-                  onClick={() => setForm((prev) => ({ ...prev, category_id: category.id }))}
+                  onClick={() => {
+                    markCategoryManual()
+                    setForm((prev) => ({ ...prev, category_id: category.id }))
+                  }}
                   disabled={isMutating}
                 >
                   {category.name}
@@ -518,7 +569,10 @@ export function TransactionsPage() {
               id="txn-category"
               className="quick-category-select"
               value={form.category_id}
-              onChange={(e) => setForm((prev) => ({ ...prev, category_id: e.target.value }))}
+              onChange={(e) => {
+                markCategoryManual()
+                setForm((prev) => ({ ...prev, category_id: e.target.value }))
+              }}
               disabled={isMutating}
             >
               <option value="">Select category</option>
@@ -528,6 +582,11 @@ export function TransactionsPage() {
                 </option>
               ))}
             </select>
+            {autoSelectedCategoryName ? (
+              <p className="quick-entry-auto-category-hint">
+                Suggested from description: {autoSelectedCategoryName}
+              </p>
+            ) : null}
           </div>
 
           {formError ? <p className="error quick-feedback">{formError}</p> : null}

@@ -14,7 +14,9 @@ import budgetRoute from './routes/budgetRoute';
 import authRoute from './routes/AuthRoutes';
 import insightsRoute from './routes/insightsRoute';
 import recoveryCodeRoute from './routes/recoveryCodeRoute';
+import categoryKeywordRoute from './routes/categoryKeywordRoute';
 import './models/MfaRecoveryCodeModel'; // ensure table is created on sync
+import './models/CategoryKeywordModel'; // ensure table is created on sync
 
 const app = express();
 
@@ -59,6 +61,7 @@ app.use('/api/auth/recovery-codes', recoveryCodeRoute);
 // Protected routes - apply JWT verification middleware
 app.use('/api/users', Middlewares.verifyAuth, userRoute);
 app.use('/api/categories', Middlewares.verifyAuth, categoryRoute);
+app.use('/api/category-keywords', Middlewares.verifyAuth, categoryKeywordRoute);
 app.use('/api/transactions', Middlewares.verifyAuth, transactionRoute);
 app.use('/api/budgets', Middlewares.verifyAuth, budgetRoute);
 app.use('/api/insights', Middlewares.verifyAuth, insightsRoute);

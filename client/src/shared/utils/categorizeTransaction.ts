@@ -4,6 +4,19 @@ export interface CategorizableCategory {
   type: 'income' | 'expense'
 }
 
+export interface CategoryKeywordRule {
+  keyword: string
+  category_id: string
+}
+
+export interface CategoryKeywordMapping {
+  id: string
+  category_id: string
+  category_name: string
+  category_type: 'income' | 'expense'
+  keywords: string[]
+}
+
 /** Keyword lists keyed by lowercase category name — mirrors server CategorizationService defaults. */
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   groceries: ['grocery', 'groceries', 'safeway', 'costco', 'trader joe', 'whole foods', 'walmart', 'kroger', 'publix', 'food store', 'market'],
@@ -23,12 +36,37 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'investment returns': ['dividend', 'interest', 'return', 'investment', 'stock', 'bond'],
 }
 
+export function flattenCategoryKeywordMappings(mappings: CategoryKeywordMapping[]): CategoryKeywordRule[] {
+  const rules: CategoryKeywordRule[] = []
+
+  for (const mapping of mappings) {
+    for (const keyword of mapping.keywords) {
+      rules.push({
+        keyword,
+        category_id: mapping.category_id,
+      })
+    }
+  }
+
+  return rules
+}
+
 export function categorizeTransaction(
   description: string,
   type: 'income' | 'expense',
   categories: CategorizableCategory[],
+  userRules: CategoryKeywordRule[] = [],
 ): string | null {
   const lowerDescription = description.toLowerCase()
+  const categoryById = new Map(categories.map((category) => [category.id, category]))
+
+  for (const rule of userRules) {
+    const category = categoryById.get(rule.category_id)
+    if (!category || category.type !== type) continue
+    if (lowerDescription.includes(rule.keyword)) {
+      return rule.category_id
+    }
+  }
 
   for (const category of categories) {
     if (category.type !== type) continue
@@ -70,6 +108,7 @@ export interface BuiltImportReview {
 export function buildImportReview(
   rows: ImportRowInput[],
   categories: CategorizableCategory[],
+  userRules: CategoryKeywordRule[] = [],
 ): BuiltImportReview {
   let categorizedCount = 0
 
@@ -77,7 +116,7 @@ export function buildImportReview(
     let categoryId = row.category_id
 
     if (!categoryId) {
-      categoryId = categorizeTransaction(row.description, row.type, categories) ?? undefined
+      categoryId = categorizeTransaction(row.description, row.type, categories, userRules) ?? undefined
       if (categoryId) categorizedCount += 1
     }
 
