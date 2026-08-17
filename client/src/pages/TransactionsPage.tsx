@@ -156,10 +156,10 @@ export function TransactionsPage() {
     }
 
     const parsed = parseTransactionUrlState(searchParams)
-    setDraftFilters(parsed.filters)
-    setAppliedFilters(parsed.filters)
-    setPage(parsed.page)
-    setLimit(parsed.limit)
+    setDraftFilters((prev) => (filtersAreEqual(prev, parsed.filters) ? prev : parsed.filters))
+    setAppliedFilters((prev) => (filtersAreEqual(prev, parsed.filters) ? prev : parsed.filters))
+    setPage((prev) => (prev === parsed.page ? prev : parsed.page))
+    setLimit((prev) => (prev === parsed.limit ? prev : parsed.limit))
   }, [searchParams])
 
   useEffect(() => {
@@ -172,9 +172,24 @@ export function TransactionsPage() {
 
   useEffect(() => {
     if (totalPages > 0 && page > totalPages) {
-      setPage(totalPages)
+      const clampedPage = totalPages
+      setPage(clampedPage)
+      syncFiltersToUrl(appliedFilters, clampedPage, limit)
     }
-  }, [page, totalPages])
+  }, [page, totalPages, appliedFilters, limit])
+
+  useEffect(() => {
+    if (editingId || categoryManuallySet || !suggestedCategoryId) {
+      return
+    }
+
+    setForm((prev) => {
+      if (prev.category_id === suggestedCategoryId) {
+        return prev
+      }
+      return { ...prev, category_id: suggestedCategoryId }
+    })
+  }, [suggestedCategoryId, categoryManuallySet, editingId])
 
   const isMutating =
     createMutation.isPending ||
@@ -379,19 +394,6 @@ export function TransactionsPage() {
   const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
   const heroSecondaryLabel =
     appliedFilters.sort === 'newest' ? 'Latest in list' : getSortLabel(appliedFilters.sort)
-
-  useEffect(() => {
-    if (editingId || categoryManuallySet || !suggestedCategoryId) {
-      return
-    }
-
-    setForm((prev) => {
-      if (prev.category_id === suggestedCategoryId) {
-        return prev
-      }
-      return { ...prev, category_id: suggestedCategoryId }
-    })
-  }, [suggestedCategoryId, categoryManuallySet, editingId])
 
   function markCategoryManual() {
     setCategoryManuallySet(true)

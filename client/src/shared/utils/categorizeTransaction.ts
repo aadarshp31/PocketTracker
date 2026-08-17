@@ -36,11 +36,12 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'investment returns': ['dividend', 'interest', 'return', 'investment', 'stock', 'bond'],
 }
 
-export function flattenCategoryKeywordMappings(mappings: CategoryKeywordMapping[]): CategoryKeywordRule[] {
+export function flattenCategoryKeywordMappings(mappings: CategoryKeywordMapping[] | undefined | null): CategoryKeywordRule[] {
   const rules: CategoryKeywordRule[] = []
 
-  for (const mapping of mappings) {
-    for (const keyword of mapping.keywords) {
+  for (const mapping of mappings ?? []) {
+    for (const keyword of mapping.keywords ?? []) {
+      if (!keyword) continue
       rules.push({
         keyword,
         category_id: mapping.category_id,
