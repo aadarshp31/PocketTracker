@@ -9,9 +9,13 @@ import {
 
 interface TransactionFiltersProps {
   filters: TransactionFilterState
+  appliedFilters: TransactionFilterState
   categories: CategoryItem[]
+  hasPendingChanges?: boolean
   disabled?: boolean
   onChange: (next: TransactionFilterState) => void
+  onApply: () => void
+  onResetDraft: () => void
   onClear: () => void
 }
 
@@ -33,9 +37,13 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
 
 export function TransactionFilters({
   filters,
+  appliedFilters,
   categories,
+  hasPendingChanges = false,
   disabled = false,
   onChange,
+  onApply,
+  onResetDraft,
   onClear,
 }: TransactionFiltersProps) {
   const filteredCategories = useMemo(() => {
@@ -43,9 +51,9 @@ export function TransactionFilters({
     return categories.filter((category) => category.type === filters.type)
   }, [categories, filters.type])
 
-  const selectedCategoryName = categories.find((category) => category.id === filters.category_id)?.name
-  const summaryParts = buildFilterSummary(filters, selectedCategoryName)
-  const showSummary = hasActiveFilters(filters)
+  const appliedCategoryName = categories.find((category) => category.id === appliedFilters.category_id)?.name
+  const appliedSummaryParts = buildFilterSummary(appliedFilters, appliedCategoryName)
+  const showAppliedSummary = hasActiveFilters(appliedFilters)
 
   function patch(partial: Partial<TransactionFilterState>) {
     onChange({ ...filters, ...partial })
@@ -67,7 +75,7 @@ export function TransactionFilters({
       <div className="dashboard-card-header">
         <div>
           <h2>Browse &amp; Edit</h2>
-          <p className="muted">Filter the list below to find and update transactions quickly.</p>
+          <p className="muted">Adjust filters, then apply to refresh the list.</p>
         </div>
       </div>
 
@@ -174,18 +182,41 @@ export function TransactionFilters({
         ))}
       </div>
 
-      {showSummary ? (
+      <div className="transaction-filter-actions">
+        <button
+          type="button"
+          className="primary-button"
+          onClick={onApply}
+          disabled={disabled || !hasPendingChanges}
+        >
+          Apply filters
+        </button>
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={onResetDraft}
+          disabled={disabled || !hasPendingChanges}
+        >
+          Reset changes
+        </button>
+        <button type="button" className="ghost-button" onClick={onClear} disabled={disabled}>
+          Clear filters
+        </button>
+      </div>
+
+      {hasPendingChanges ? (
+        <p className="transaction-filter-pending muted">You have unapplied filter changes.</p>
+      ) : null}
+
+      {showAppliedSummary ? (
         <div className="transaction-filter-summary">
           <span className="transaction-filter-summary-label">Active filters:</span>
-          <span className="transaction-filter-summary-text">{summaryParts.join(' · ')}</span>
-          <button type="button" className="ghost-button transaction-filter-clear" onClick={onClear} disabled={disabled}>
-            Clear filters
-          </button>
+          <span className="transaction-filter-summary-text">{appliedSummaryParts.join(' · ')}</span>
         </div>
       ) : (
         <div className="transaction-filter-summary transaction-filter-summary-viewing">
           <span className="transaction-filter-summary-label">Viewing:</span>
-          <span className="transaction-filter-summary-text">{summaryParts.join(' · ')}</span>
+          <span className="transaction-filter-summary-text">{appliedSummaryParts.join(' · ')}</span>
         </div>
       )}
     </div>

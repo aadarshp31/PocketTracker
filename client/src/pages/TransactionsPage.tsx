@@ -16,12 +16,12 @@ import { TransactionList } from '../features/transactions/components/Transaction
 import { TransactionPagination } from '../features/transactions/components/TransactionPagination'
 import { TransactionTotalsBar } from '../features/transactions/components/TransactionTotalsBar'
 import { ConfirmDialog } from '../shared/components/ConfirmDialog'
-import { useDebouncedValue } from '../shared/hooks/useDebouncedValue'
 import {
   buildTransactionSearchParams,
   parseTransactionUrlState,
 } from '../features/transactions/utils/transactionUrlSync'
 import {
+  filtersAreEqual,
   filtersToApiParams,
   getEmptyListMessage,
   getSortLabel,
@@ -68,10 +68,12 @@ function toPayload(form: TransactionFormState) {
 
 export function TransactionsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const initialUrlState = useMemo(() => parseTransactionUrlState(searchParams), [])
-  const [page, setPage] = useState(initialUrlState.page)
-  const [limit, setLimit] = useState(initialUrlState.limit)
-  const [filters, setFilters] = useState<TransactionFilterState>(initialUrlState.filters)
+  const skipUrlParseRef = useRef(false)
+
+  const [draftFilters, setDraftFilters] = useState(() => parseTransactionUrlState(searchParams).filters)
+  const [appliedFilters, setAppliedFilters] = useState(() => parseTransactionUrlState(searchParams).filters)
+  const [page, setPage] = useState(() => parseTransactionUrlState(searchParams).page)
+  const [limit, setLimit] = useState(() => parseTransactionUrlState(searchParams).limit)
   const [form, setForm] = useState<TransactionFormState>(initialFormState)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
@@ -82,16 +84,8 @@ export function TransactionsPage() {
   const amountInputRef = useRef<HTMLInputElement | null>(null)
   const quickEntryRef = useRef<HTMLDivElement | null>(null)
 
-  const debouncedSearch = useDebouncedValue(filters.search)
-
-  const filterApiParams = useMemo(
-    () =>
-      filtersToApiParams({
-        ...filters,
-        search: debouncedSearch,
-      }),
-    [filters, debouncedSearch]
-  )
+  const filterApiParams = useMemo(() => filtersToApiParams(appliedFilters), [appliedFilters])
+  const hasPendingFilterChanges = !filtersAreEqual(draftFilters, appliedFilters)
 
   const listParams = useMemo(
     () => ({
@@ -121,37 +115,31 @@ export function TransactionsPage() {
     [categories, form.type]
   )
   const recentTransaction = query.data?.transactions?.[0] ?? null
-  const filtersActive = hasActiveFilters(filters)
-  const emptyListMessage = getEmptyListMessage(filters)
+  const filtersActive = hasActiveFilters(appliedFilters)
+  const emptyListMessage = getEmptyListMessage(appliedFilters)
   const isInitialLoading =
     (query.isLoading && !query.data) || categoriesQuery.isLoading || profileQuery.isLoading
   const isListFetching = query.isFetching && !isInitialLoading
 
+  function syncFiltersToUrl(nextFilters: TransactionFilterState, nextPage: number, nextLimit: number) {
+    skipUrlParseRef.current = true
+    setSearchParams(buildTransactionSearchParams(nextFilters, nextPage, nextLimit, nextFilters.search), {
+      replace: true,
+    })
+  }
+
   useEffect(() => {
+    if (skipUrlParseRef.current) {
+      skipUrlParseRef.current = false
+      return
+    }
+
     const parsed = parseTransactionUrlState(searchParams)
-    setFilters(parsed.filters)
+    setDraftFilters(parsed.filters)
+    setAppliedFilters(parsed.filters)
     setPage(parsed.page)
     setLimit(parsed.limit)
   }, [searchParams])
-
-  useEffect(() => {
-    const nextParams = buildTransactionSearchParams(filters, page, limit, debouncedSearch)
-    if (nextParams.toString() !== searchParams.toString()) {
-      setSearchParams(nextParams, { replace: true })
-    }
-  }, [
-    filters.period,
-    filters.customDateFrom,
-    filters.customDateTo,
-    filters.type,
-    filters.category_id,
-    filters.sort,
-    page,
-    limit,
-    debouncedSearch,
-    searchParams,
-    setSearchParams,
-  ])
 
   useEffect(() => {
     if (!editingId) {
@@ -173,24 +161,40 @@ export function TransactionsPage() {
     deleteMutation.isPending ||
     createCategoryMutation.isPending
 
-  function updateFilters(next: TransactionFilterState) {
-    setFilters(next)
+  function applyFilters() {
+    setAppliedFilters(draftFilters)
     setPage(1)
+    syncFiltersToUrl(draftFilters, 1, limit)
+  }
+
+  function resetDraftFilters() {
+    setDraftFilters(appliedFilters)
   }
 
   function clearFilters() {
-    setFilters(defaultTransactionFilters)
+    setDraftFilters(defaultTransactionFilters)
+    setAppliedFilters(defaultTransactionFilters)
     setPage(1)
+    syncFiltersToUrl(defaultTransactionFilters, 1, limit)
   }
 
   function showAllTime() {
-    setFilters((prev) => ({ ...prev, period: 'all-time' }))
+    const nextFilters = { ...appliedFilters, period: 'all-time' as const }
+    setDraftFilters(nextFilters)
+    setAppliedFilters(nextFilters)
     setPage(1)
+    syncFiltersToUrl(nextFilters, 1, limit)
+  }
+
+  function onPageChange(nextPage: number) {
+    setPage(nextPage)
+    syncFiltersToUrl(appliedFilters, nextPage, limit)
   }
 
   function updateLimit(nextLimit: number) {
     setLimit(nextLimit)
     setPage(1)
+    syncFiltersToUrl(appliedFilters, 1, nextLimit)
   }
 
   function validateForm() {
@@ -347,7 +351,8 @@ export function TransactionsPage() {
   const transactions = query.data?.transactions ?? []
   const meta = query.data?.meta
   const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
-  const heroSecondaryLabel = filters.sort === 'newest' ? 'Latest in list' : getSortLabel(filters.sort)
+  const heroSecondaryLabel =
+    appliedFilters.sort === 'newest' ? 'Latest in list' : getSortLabel(appliedFilters.sort)
 
   return (
     <section className="transactions-page">
@@ -542,10 +547,14 @@ export function TransactionsPage() {
       </div>
 
       <TransactionFilters
-        filters={filters}
+        filters={draftFilters}
+        appliedFilters={appliedFilters}
         categories={categories}
+        hasPendingChanges={hasPendingFilterChanges}
         disabled={isMutating}
-        onChange={updateFilters}
+        onChange={setDraftFilters}
+        onApply={applyFilters}
+        onResetDraft={resetDraftFilters}
         onClear={clearFilters}
       />
 
@@ -563,7 +572,7 @@ export function TransactionsPage() {
         editingId={editingId}
         emptyMessage={emptyListMessage}
         showClearFilters={filtersActive}
-        showAllTimeAction={!filtersActive && isPeriodScoped(filters)}
+        showAllTimeAction={!filtersActive && isPeriodScoped(appliedFilters)}
         isMutating={isMutating}
         onEdit={onEdit}
         onDelete={onDeleteRequest}
@@ -571,6 +580,12 @@ export function TransactionsPage() {
         onClearFilters={clearFilters}
         onShowAllTime={showAllTime}
       />
+
+      {hasPendingFilterChanges ? (
+        <p className="muted transaction-list-stale-note">
+          List reflects your last applied filters. Click Apply filters to update results.
+        </p>
+      ) : null}
 
       {isListFetching ? <p className="muted transaction-list-loading">Updating list...</p> : null}
 
@@ -580,7 +595,7 @@ export function TransactionsPage() {
           page={page}
           limit={limit}
           disabled={isMutating || isListFetching}
-          onPageChange={setPage}
+          onPageChange={onPageChange}
           onLimitChange={updateLimit}
         />
       ) : null}

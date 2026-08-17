@@ -1536,6 +1536,23 @@ button:disabled {
   padding: 0 0.35rem;
 }
 
+.transaction-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 1rem;
+}
+
+.transaction-filter-pending {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+}
+
+.transaction-list-stale-note {
+  margin-top: 0.65rem;
+  font-size: 0.9rem;
+}
+
 .transaction-filter-summary-viewing {
   border-top: none;
   padding-top: 0;

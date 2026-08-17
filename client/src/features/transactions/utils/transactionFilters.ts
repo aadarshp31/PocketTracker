@@ -190,3 +190,15 @@ export function buildFilterSummary(
 
   return parts
 }
+
+export function filtersAreEqual(a: TransactionFilterState, b: TransactionFilterState): boolean {
+  return (
+    a.period === b.period &&
+    a.customDateFrom === b.customDateFrom &&
+    a.customDateTo === b.customDateTo &&
+    a.type === b.type &&
+    a.category_id === b.category_id &&
+    a.search === b.search &&
+    a.sort === b.sort
+  )
+}
