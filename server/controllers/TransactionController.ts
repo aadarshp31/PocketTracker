@@ -296,55 +296,6 @@ export default class TransactionController {
     });
   }
 
-  async bulkCreatePreview(req: Request, res: Response) {
-    try {
-      if (!req.user?.id) {
-        res.status(401).json({ message: 'User not authenticated' });
-        return;
-      }
-
-      const userId = await this.getUserIdFromSupabaseId(req.user.id);
-      
-      if (!userId) {
-        res.status(404).json({
-          message: 'User profile not found in database'
-        });
-        return;
-      }
-
-      const { transactions } = req.body;
-
-      if (!Array.isArray(transactions) || transactions.length === 0) {
-        res.status(400).json({
-          message: "Invalid or empty transactions array"
-        });
-        return;
-      }
-
-      if (transactions.length > BULK_IMPORT_MAX_TRANSACTIONS) {
-        res.status(400).json({
-          message: `Too many transactions. Maximum allowed per request is ${BULK_IMPORT_MAX_TRANSACTIONS}. You sent ${transactions.length}. Split your statement into smaller ranges and import in batches.`,
-          maxAllowed: BULK_IMPORT_MAX_TRANSACTIONS,
-          received: transactions.length,
-        });
-        return;
-      }
-
-      const preview = await this.transactionService.previewBulkImport(transactions, userId);
-
-      res.status(200).json({
-        preview,
-        message: `Preview ready: ${preview.categorizedCount} transactions categorized, ${preview.flaggedDuplicateCount} potential duplicates flagged`
-      });
-
-    } catch (error: any) {
-      res.status(400).json({
-        message: "Preview failed",
-        error: error.message
-      });
-    }
-  }
-
   async bulkCreate(req: Request, res: Response) {
     try {
       if (!req.user?.id) {
@@ -381,11 +332,19 @@ export default class TransactionController {
         return;
       }
 
-      const result = await this.transactionService.createBulkWithCategorization(transactions, userId);
+      const missingCategory = transactions.find((tx) => !tx?.category_id);
+      if (missingCategory) {
+        res.status(400).json({
+          message: "Each transaction must include a category_id"
+        });
+        return;
+      }
+
+      const result = await this.transactionService.createBulkImport(transactions, userId);
 
       res.status(201).json({
         result,
-        message: `Successfully created ${result.created.length} transactions, ${result.failed.length} failed`
+        message: `Successfully imported ${result.created.length} transaction${result.created.length === 1 ? '' : 's'}`
       });
 
     } catch (error: any) {

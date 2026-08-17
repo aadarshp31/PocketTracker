@@ -8,7 +8,6 @@ const transactionController = new TransactionController(new TransactionService()
 
 // Bulk import routes MUST come before param middleware to avoid conflict
 transactionRoute.get("/bulk/config", transactionController.getBulkConfig.bind(transactionController));
-transactionRoute.post("/bulk/preview", transactionController.bulkCreatePreview.bind(transactionController));
 transactionRoute.post("/bulk", transactionController.bulkCreate.bind(transactionController));
 
 // Standard transaction routes

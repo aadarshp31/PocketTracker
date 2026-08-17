@@ -6,7 +6,7 @@ export interface BulkImportPayload {
     type: 'income' | 'expense'
     description: string
     date: string
-    category_id?: string
+    category_id: string
   }>
 }
 
@@ -19,12 +19,11 @@ export async function getBulkImportConfig(): Promise<BulkImportConfig> {
   return response.data
 }
 
-export async function bulkImportPreview(payload: BulkImportPayload) {
-  const response = await http.post('/transactions/bulk/preview', payload)
-  return response.data
-}
+const BULK_IMPORT_TIMEOUT_MS = 120_000
 
 export async function bulkImportSubmit(payload: BulkImportPayload) {
-  const response = await http.post('/transactions/bulk', payload)
+  const response = await http.post('/transactions/bulk', payload, {
+    timeout: BULK_IMPORT_TIMEOUT_MS,
+  })
   return response.data
 }

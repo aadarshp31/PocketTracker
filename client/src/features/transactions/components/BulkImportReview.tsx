@@ -1,21 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, RefreshCw, RotateCcw, Trash2, CheckSquare } from 'lucide-react'
-import { formatCurrency } from '../../../shared/utils/currency'
-import { safeLocaleDateString } from '../../../shared/utils/importDate'
+import { useEffect, useState } from 'react'
+import { RotateCcw, Trash2 } from 'lucide-react'
 import { useCategories } from '../hooks/useCategories'
-
-export interface DuplicateMatch {
-  existingTransactionId: string
-  existingTransaction: {
-    id: string
-    amount: number
-    description: string
-    date: string
-    type: string
-  }
-  matchScore: number
-  matchReasons: string[]
-}
 
 export interface PreviewTransaction {
   index: number
@@ -26,23 +11,9 @@ export interface PreviewTransaction {
   category_id: string
 }
 
-export interface FlaggedDuplicate {
-  newTransaction: {
-    amount: number
-    description: string
-    date: string
-    type: string
-  }
-  index: number
-  potentialMatches: DuplicateMatch[]
-  isDuplicate: boolean
-}
-
 export interface BulkImportReviewProps {
   transactions: PreviewTransaction[]
-  duplicates: FlaggedDuplicate[]
   categorizedCount: number
-  flaggedDuplicateCount: number
   onConfirm: (transactionsToImport: Array<{
     amount: number
     type: 'income' | 'expense'
@@ -52,24 +23,18 @@ export interface BulkImportReviewProps {
   }>) => void
   onBack: () => void
   isLoading?: boolean
-  currency?: string
 }
 
 export function BulkImportReview({
   transactions,
-  duplicates,
   categorizedCount,
-  flaggedDuplicateCount,
   onConfirm,
   onBack,
   isLoading = false,
-  currency = 'INR',
 }: BulkImportReviewProps) {
-  const [selectedDuplicateAction, setSelectedDuplicateAction] = useState<Record<number, 'skip' | 'import' | 'merge'>>({})
   const [editableTransactions, setEditableTransactions] = useState<PreviewTransaction[]>([])
   const [discardedTransactionIndices, setDiscardedTransactionIndices] = useState<Set<number>>(new Set())
   const [bulkSelectedIndices, setBulkSelectedIndices] = useState<Set<number>>(new Set())
-  const [expandedDuplicate, setExpandedDuplicate] = useState<number | null>(null)
   const [reviewError, setReviewError] = useState('')
 
   const categoriesQuery = useCategories()
@@ -79,24 +44,8 @@ export function BulkImportReview({
     setEditableTransactions(transactions)
     setDiscardedTransactionIndices(new Set())
     setBulkSelectedIndices(new Set())
-    setSelectedDuplicateAction({})
     setReviewError('')
   }, [transactions])
-
-  const duplicateByIndex = useMemo(() => {
-    const map = new Map<number, FlaggedDuplicate>()
-    duplicates
-      .filter((dup) => dup.potentialMatches.length > 0)
-      .forEach((dup) => map.set(dup.index, dup))
-    return map
-  }, [duplicates])
-
-  const handleDuplicateAction = (index: number, action: 'skip' | 'import' | 'merge') => {
-    setSelectedDuplicateAction((prev) => ({
-      ...prev,
-      [index]: action,
-    }))
-  }
 
   const handleTransactionFieldChange = (
     index: number,
@@ -151,32 +100,7 @@ export function BulkImportReview({
     setBulkSelectedIndices(new Set())
   }
 
-  const handleBulkSelectDuplicates = () => {
-    const dupIndices = editableTransactions
-      .filter((tx) => duplicateByIndex.has(tx.index))
-      .map((tx) => tx.index)
-    setBulkSelectedIndices(new Set(dupIndices))
-  }
-
-  const isRowIncluded = (txIndex: number) => {
-    if (discardedTransactionIndices.has(txIndex)) return false
-
-    const duplicate = duplicateByIndex.get(txIndex)
-    if (!duplicate) return true
-
-    const action = selectedDuplicateAction[txIndex]
-    return action !== 'skip'
-  }
-
-  const rowStatusClassName = (txIndex: number) => {
-    if (discardedTransactionIndices.has(txIndex)) return 'is-discarded'
-
-    const duplicate = duplicateByIndex.get(txIndex)
-    if (duplicate && selectedDuplicateAction[txIndex] === 'skip') return 'is-skipped'
-
-    if (duplicate) return 'is-duplicate'
-    return ''
-  }
+  const isRowIncluded = (txIndex: number) => !discardedTransactionIndices.has(txIndex)
 
   const handleConfirm = () => {
     const transactionsToImport = editableTransactions
@@ -228,23 +152,18 @@ export function BulkImportReview({
           <p className="bulk-review-stat-label">Auto-Categorized</p>
           <p className="bulk-review-stat-value">{categorizedCount}</p>
         </div>
-        <div className="bulk-review-stat-card is-duplicates">
-          <p className="bulk-review-stat-label">Potential Duplicates</p>
-          <p className="bulk-review-stat-value">{flaggedDuplicateCount}</p>
-        </div>
       </div>
 
       <div className="bulk-review-section">
         <div className="bulk-review-section-header">
           <h3>Transactions for Import</h3>
-          <p>Edit values, use date as YYYY-MM-DD, and exclude only rows you do not want to import.</p>
+          <p>Edit values, assign categories, and exclude rows you do not want to import.</p>
         </div>
 
         <p className="bulk-review-meta-hint">
           {selectedForImportCount} selected for import{excludedCount > 0 ? ` • ${excludedCount} excluded` : ''}
         </p>
 
-        {/* Bulk action toolbar */}
         <div className="bulk-preview-toolbar">
           <label className="bulk-preview-select-all">
             <input
@@ -255,11 +174,6 @@ export function BulkImportReview({
             <span>{bulkSelectedIndices.size > 0 ? `${bulkSelectedIndices.size} selected` : 'Select rows'}</span>
           </label>
           <div className="bulk-preview-toolbar-actions">
-            {flaggedDuplicateCount > 0 && (
-              <button type="button" className="bulk-preview-action-btn is-warn" onClick={handleBulkSelectDuplicates}>
-                <CheckSquare className="w-3.5 h-3.5" /> Select duplicates
-              </button>
-            )}
             {bulkSelectedIndices.size > 0 && (
               <button type="button" className="bulk-preview-action-btn is-danger" onClick={handleBulkDiscardSelected}>
                 <Trash2 className="w-3.5 h-3.5" /> Discard selected ({bulkSelectedIndices.size})
@@ -288,13 +202,10 @@ export function BulkImportReview({
             </thead>
             <tbody>
               {editableTransactions.map((tx) => {
-                const duplicate = duplicateByIndex.get(tx.index)
-                const action = selectedDuplicateAction[tx.index]
                 const isDiscarded = discardedTransactionIndices.has(tx.index)
-                const hasDuplicate = Boolean(duplicate?.potentialMatches.length)
 
                 return (
-                  <tr key={tx.index} className={`bulk-review-row ${rowStatusClassName(tx.index)}`}>
+                  <tr key={tx.index} className={`bulk-review-row ${isDiscarded ? 'is-discarded' : ''}`}>
                     <td className="px-2 py-2">
                       <input
                         type="checkbox"
@@ -365,22 +276,6 @@ export function BulkImportReview({
 
                     <td className="px-4 py-2">
                       <div className="bulk-review-status-actions">
-                        {hasDuplicate ? (
-                          <div className="bulk-review-duplicate-action">
-                            <AlertCircle className="w-4 h-4 text-yellow-600" />
-                            <select
-                              value={action || 'import'}
-                              onChange={(e) => handleDuplicateAction(tx.index, e.target.value as 'skip' | 'import' | 'merge')}
-                              disabled={isLoading || isDiscarded}
-                              className="bulk-review-inline-select"
-                            >
-                              <option value="import">Import</option>
-                              <option value="skip">Skip</option>
-                              <option value="merge">Merge</option>
-                            </select>
-                          </div>
-                        ) : null}
-
                         <button
                           type="button"
                           onClick={() => handleToggleDiscard(tx.index)}
@@ -400,73 +295,6 @@ export function BulkImportReview({
           </table>
         </div>
       </div>
-
-      {flaggedDuplicateCount > 0 && (
-        <div className="bulk-review-section">
-          <h3 className="bulk-review-duplicates-title">
-            <AlertCircle className="w-5 h-5 text-yellow-600" />
-            Potential Duplicates ({flaggedDuplicateCount})
-          </h3>
-          <div className="bulk-review-duplicates-list">
-            {duplicates
-              .filter((dup) => dup.potentialMatches.length > 0)
-              .map((duplicate) => (
-                <div key={duplicate.index} className="bulk-review-duplicate-card">
-                  <div
-                    className="bulk-review-duplicate-header"
-                    onClick={() => setExpandedDuplicate(
-                      expandedDuplicate === duplicate.index ? null : duplicate.index,
-                    )}
-                  >
-                    <div>
-                      <p className="font-medium">{duplicate.newTransaction.description}</p>
-                      <p className="text-sm text-gray-600">
-                        {formatCurrency(duplicate.newTransaction.amount, currency)} on {safeLocaleDateString(duplicate.newTransaction.date)}
-                      </p>
-                    </div>
-                    <RefreshCw className={`w-5 h-5 text-yellow-600 transition ${
-                      expandedDuplicate === duplicate.index ? 'rotate-180' : ''
-                    }`}
-                    />
-                  </div>
-
-                  {expandedDuplicate === duplicate.index && (
-                    <div className="bulk-review-duplicate-details">
-                      <p className="bulk-review-match-label">Potential Matches:</p>
-                      {duplicate.potentialMatches.slice(0, 3).map((match, idx) => (
-                        <div key={idx} className="bulk-review-match-card">
-                          <div className="bulk-review-match-header">
-                            <div>
-                              <p className="font-medium">{match.existingTransaction.description}</p>
-                              <p className="text-sm text-gray-600">
-                                {formatCurrency(match.existingTransaction.amount, currency)} on {safeLocaleDateString(match.existingTransaction.date)}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-medium text-blue-600">
-                                {Math.round(match.matchScore * 100)}% match
-                              </p>
-                            </div>
-                          </div>
-                          <div className="bulk-review-match-reasons">
-                            {match.matchReasons.map((reason, ridx) => (
-                              <span
-                                key={ridx}
-                                className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded"
-                              >
-                                {reason}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
 
       {reviewError ? <p className="error quick-feedback">{reviewError}</p> : null}
 

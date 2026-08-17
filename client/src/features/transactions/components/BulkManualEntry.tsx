@@ -160,7 +160,7 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
           <div className="bulk-manual-table-header">
             <div>
               <h3>Transactions ({transactions.length})</h3>
-              <p>Add rows, review the running total, and leave category blank when you want automatic categorization during preview.</p>
+              <p>Add rows, review the running total, and leave category blank to auto-assign from description in the next step.</p>
             </div>
             <button
               onClick={addRow}
@@ -235,7 +235,7 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
                         disabled={isLoading}
                         className="w-full px-2 py-1 border rounded"
                       >
-                        <option value="">None (auto-categorize)</option>
+                        <option value="">Auto-assign in review</option>
                         {tx.type === 'income'
                           ? incomeCategories.map((cat: any) => (
                             <option key={cat.id} value={cat.id}>

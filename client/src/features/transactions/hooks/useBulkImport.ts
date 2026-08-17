@@ -1,17 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { bulkImportPreview, bulkImportSubmit, getBulkImportConfig, type BulkImportPayload } from '../api/bulkImport'
+import { bulkImportSubmit, getBulkImportConfig, type BulkImportPayload } from '../api/bulkImport'
 
 export function useBulkImportConfig() {
   return useQuery({
     queryKey: ['bulk-import-config'],
     queryFn: getBulkImportConfig,
     staleTime: 5 * 60 * 1000,
-  })
-}
-
-export function useBulkImportPreview() {
-  return useMutation({
-    mutationFn: (payload: BulkImportPayload) => bulkImportPreview(payload),
   })
 }
 

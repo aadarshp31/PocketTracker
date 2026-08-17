@@ -2,36 +2,30 @@ import { useState } from 'react'
 import { Upload, Type, CheckCircle2 } from 'lucide-react'
 import { BulkImportUpload } from '../components/BulkImportUpload'
 import { BulkManualEntry, type ManualTransaction } from '../components/BulkManualEntry'
-import { BulkImportReview, type PreviewTransaction, type FlaggedDuplicate } from '../components/BulkImportReview'
-import { useBulkImportPreview, useBulkImportSubmit, useBulkImportConfig } from '../hooks/useBulkImport'
+import { BulkImportReview, type PreviewTransaction } from '../components/BulkImportReview'
+import { useBulkImportSubmit, useBulkImportConfig } from '../hooks/useBulkImport'
 import { useProfile } from '../../profile/hooks/useProfile'
+import { useCategories } from '../hooks/useCategories'
+import { buildImportReview, type ImportRowInput } from '../../../shared/utils/categorizeTransaction'
 
 export default function BulkImportPage() {
   const [activeTab, setActiveTab] = useState<'csv' | 'manual'>('csv')
   const [step, setStep] = useState<'input' | 'preview' | 'complete'>('input')
   const [previewData, setPreviewData] = useState<{
     transactions: PreviewTransaction[]
-    duplicates: FlaggedDuplicate[]
     categorizedCount: number
-    flaggedDuplicateCount: number
   } | null>(null)
   const [completedCount, setCompletedCount] = useState(0)
   const [error, setError] = useState<string>('')
 
-  const previewMutation = useBulkImportPreview()
   const submitMutation = useBulkImportSubmit()
   const profileQuery = useProfile()
+  const categoriesQuery = useCategories()
   const bulkConfigQuery = useBulkImportConfig()
   const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
   const maxBatch = bulkConfigQuery.data?.maxTransactionsPerBatch ?? 500
 
-  const handleCsvFileProcess = async (transactions: Array<{
-    amount: number
-    type: 'income' | 'expense'
-    description: string
-    date: string
-    category_id?: string
-    }>) => {
+  const prepareReview = (transactions: ImportRowInput[]) => {
     setError('')
 
     if (transactions.length > maxBatch) {
@@ -42,32 +36,35 @@ export default function BulkImportPage() {
       return
     }
 
-    try {
-      const result = await previewMutation.mutateAsync({ transactions })
-      setPreviewData(result.preview)
-      setStep('preview')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to preview transactions')
+    const categories = categoriesQuery.data?.categories
+    if (!categories?.length) {
+      setError('Categories are still loading. Please try again in a moment.')
+      return
     }
+
+    const review = buildImportReview(transactions, categories)
+    setPreviewData(review)
+    setStep('preview')
   }
 
-  const handleManualTransactionsReady = async (transactions: ManualTransaction[]) => {
-    setError('')
-    const txToProcess = transactions.map((tx) => ({
+  const handleCsvFileProcess = (transactions: Array<{
+    amount: number
+    type: 'income' | 'expense'
+    description: string
+    date: string
+    category_id?: string
+  }>) => {
+    prepareReview(transactions)
+  }
+
+  const handleManualTransactionsReady = (transactions: ManualTransaction[]) => {
+    prepareReview(transactions.map((tx) => ({
       amount: tx.amount,
       type: tx.type,
       description: tx.description,
       date: tx.date,
       category_id: tx.category_id,
-    }))
-
-    try {
-      const result = await previewMutation.mutateAsync({ transactions: txToProcess })
-      setPreviewData(result.preview)
-      setStep('preview')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to preview transactions')
-    }
+    })))
   }
 
   const handleReviewConfirm = async (transactionsToImport: Array<{
@@ -102,6 +99,8 @@ export default function BulkImportPage() {
     setError('')
   }
 
+  const categoriesLoading = categoriesQuery.isLoading && !categoriesQuery.data
+
   return (
     <section className="bulk-import-page">
       <div className="bulk-import-hero">
@@ -109,7 +108,7 @@ export default function BulkImportPage() {
           <span className="transactions-import-eyebrow">Transactions</span>
           <h1>Bulk Import</h1>
           <p className="muted bulk-import-subtitle">
-            Upload a CSV statement or stage multiple entries in one pass, then review duplicates before anything lands in your ledger.
+            Upload a CSV statement or stage multiple entries in one pass, review categories, then import when ready.
           </p>
         </div>
       </div>
@@ -179,18 +178,20 @@ export default function BulkImportPage() {
               </div>
 
               <div className="bulk-import-card-body">
-                {activeTab === 'csv' ? (
+                {categoriesLoading ? (
+                  <p className="muted">Loading categories…</p>
+                ) : activeTab === 'csv' ? (
                   <BulkImportUpload
                     onFileProcess={handleCsvFileProcess}
                     onError={setError}
-                    isLoading={previewMutation.isPending}
+                    isLoading={false}
                     currency={currency}
                   />
                 ) : (
                   <BulkManualEntry
                     onTransactionsReady={handleManualTransactionsReady}
                     onError={setError}
-                    isLoading={previewMutation.isPending}
+                    isLoading={false}
                     currency={currency}
                   />
                 )}
@@ -202,9 +203,7 @@ export default function BulkImportPage() {
             <div className="bulk-import-card-body">
               <BulkImportReview
                 transactions={previewData.transactions}
-                duplicates={previewData.duplicates}
                 categorizedCount={previewData.categorizedCount}
-                flaggedDuplicateCount={previewData.flaggedDuplicateCount}
                 onConfirm={handleReviewConfirm}
                 onBack={() => {
                   setStep('input')
@@ -212,7 +211,6 @@ export default function BulkImportPage() {
                   setError('')
                 }}
                 isLoading={submitMutation.isPending}
-                currency={currency}
               />
             </div>
           )}
