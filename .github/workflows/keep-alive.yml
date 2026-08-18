@@ -1,0 +1,21 @@
+name: Keep Render server awake
+
+on:
+  schedule:
+    # Every 12 minutes. GitHub cron can drift, so this is a backup to the in-process ping.
+    - cron: '*/12 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping public health endpoint
+        env:
+          KEEP_ALIVE_URL: ${{ vars.KEEP_ALIVE_URL }}
+        run: |
+          url="${KEEP_ALIVE_URL:-https://pockettracker-server.onrender.com/api/}"
+          curl --fail --silent --show-error --max-time 30 \
+            --user-agent "pockettracker-keep-alive" \
+            "$url"

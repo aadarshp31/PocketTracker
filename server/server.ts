@@ -17,6 +17,7 @@ import recoveryCodeRoute from './routes/recoveryCodeRoute';
 import categoryKeywordRoute from './routes/categoryKeywordRoute';
 import './models/MfaRecoveryCodeModel'; // ensure table is created on sync
 import './models/CategoryKeywordModel'; // ensure table is created on sync
+import { startKeepAlive } from './services/KeepAliveService';
 
 const app = express();
 
@@ -73,4 +74,5 @@ app.use(Middlewares.errorHandler);
 // server init
 app.listen(process.env.PORT, async () => {
   console.info(`server is running at port: ${process.env.PORT}`);
+  startKeepAlive();
 });
