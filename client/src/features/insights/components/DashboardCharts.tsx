@@ -13,29 +13,45 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { formatCurrency } from '../../../shared/utils/currency'
+import { formatCompactCurrency, formatCurrency } from '../../../shared/utils/currency'
 import { safeLocaleDateString } from '../../../shared/utils/importDate'
 import { buildDashboardCategoryTransactionsUrl } from '../../transactions/utils/transactionUrlSync'
 import type { CategoryData, DailyPatternData, MonthlyTrendData, ProjectionData, SpikesData } from '../types'
 
-const chartPalette = ['#1d4ed8', '#f59e0b', '#059669', '#dc2626', '#7c3aed', '#0891b2']
+const chartPalette = [
+  '#355c4f', '#f59e0b', '#1d4ed8', '#dc2626', '#7c3aed', '#0891b2',
+  '#db2777', '#65a30d', '#ea580c', '#4f46e5', '#ca8a04', '#be185d',
+  '#0f766e', '#64748b',
+]
+
+const chartMargin = { left: 8, right: 16, top: 12, bottom: 8 }
+const axisTick = { fontSize: 12, fill: '#6b7280' }
 
 function DashboardTooltip({ active, payload, currency }: { active?: boolean; payload?: Array<{ value?: number | string; name?: string; payload?: Record<string, unknown> }>; currency: string }) {
   if (!active || !payload || payload.length === 0) {
     return null
   }
 
-  const item = payload[0]
-  const rawLabel = typeof item?.payload?.label === 'string'
-    ? item.payload.label
-    : typeof item?.name === 'string'
-      ? item.name
+  const rawLabel = typeof payload[0]?.payload?.label === 'string'
+    ? payload[0].payload.label
+    : typeof payload[0]?.name === 'string'
+      ? payload[0].name
       : ''
 
   return (
     <div className="dashboard-tooltip">
       {rawLabel ? <strong>{rawLabel}</strong> : null}
-      <div>{formatCurrency(Number(item?.value ?? 0), currency)}</div>
+      {payload.map((item, index) => {
+        const percentage = typeof item.payload?.percentage === 'number' ? item.payload.percentage : null
+        const showName = payload.length > 1 && typeof item.name === 'string'
+        return (
+          <div key={`${item.name ?? 'value'}-${index}`}>
+            {showName ? `${item.name}: ` : null}
+            {formatCurrency(Number(item.value ?? 0), currency)}
+            {percentage != null ? ` (${percentage.toFixed(1)}%)` : null}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -85,7 +101,7 @@ export default function DashboardCharts({
 
   return (
     <div className="dashboard-grid">
-      <div className="table-wrap dashboard-card dashboard-card-chart">
+      <div className="table-wrap dashboard-card dashboard-card-chart dashboard-card-full">
         <div className="dashboard-card-header">
           <div>
             <h2>Monthly Trend</h2>
@@ -96,21 +112,21 @@ export default function DashboardCharts({
         {trendChartData.length === 0 ? (
           <p className="muted">No monthly trend data available.</p>
         ) : (
-          <div className="dashboard-chart-shell dashboard-chart-shell-wide">
+          <div className="dashboard-chart-shell dashboard-chart-shell-trend">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendChartData} margin={{ left: 4, right: 12, top: 12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                <YAxis tickFormatter={(value) => formatCurrency(value, currency)} tickLine={false} axisLine={false} width={82} />
+              <LineChart data={trendChartData} margin={chartMargin}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} interval="preserveStartEnd" minTickGap={18} tick={axisTick} />
+                <YAxis tickFormatter={(value) => formatCompactCurrency(value, currency)} tickLine={false} axisLine={false} width={56} tick={axisTick} />
                 <Tooltip content={<DashboardTooltip currency={currency} />} />
-                <Line type="monotone" dataKey="total" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 4, fill: '#1d4ed8' }} activeDot={{ r: 6 }} name="Monthly total" />
+                <Line type="monotone" dataKey="total" stroke="#1d4ed8" strokeWidth={3} dot={{ r: 3, fill: '#1d4ed8' }} activeDot={{ r: 6 }} name="Monthly total" />
               </LineChart>
             </ResponsiveContainer>
           </div>
         )}
       </div>
 
-      <div className="table-wrap dashboard-card dashboard-card-chart">
+      <div className="table-wrap dashboard-card dashboard-card-chart dashboard-card-full">
         <div className="dashboard-card-header">
           <div>
             <h2>Category Breakdown</h2>
@@ -122,7 +138,7 @@ export default function DashboardCharts({
         {categoryChartData.length === 0 ? (
           <p className="muted">No category data for the selected period.</p>
         ) : (
-          <>
+          <div className="dashboard-category-body">
             <div className="dashboard-chart-shell">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -132,7 +148,7 @@ export default function DashboardCharts({
                     nameKey="label"
                     innerRadius={68}
                     outerRadius={108}
-                    paddingAngle={3}
+                    paddingAngle={categoryChartData.length > 8 ? 1 : 3}
                     style={{ cursor: 'pointer' }}
                     onClick={(_, index) => {
                       const category = categoryChartData[index]
@@ -142,7 +158,7 @@ export default function DashboardCharts({
                     }}
                   >
                     {categoryChartData.map((entry) => (
-                      <Cell key={entry.label} fill={entry.fill} />
+                      <Cell key={entry.categoryId} fill={entry.fill} />
                     ))}
                   </Pie>
                   <Tooltip content={<DashboardTooltip currency={currency} />} />
@@ -155,16 +171,20 @@ export default function DashboardCharts({
                   key={category.categoryId}
                   to={buildDashboardCategoryTransactionsUrl(category.categoryId, dashboardMonth, dashboardYear)}
                   className="dashboard-legend-row dashboard-legend-link"
+                  aria-label={`View ${category.label} transactions`}
                 >
                   <span className="dashboard-legend-name">
                     <span className="dashboard-color-dot" style={{ backgroundColor: category.fill }} />
-                    {category.label}
+                    <span className="dashboard-legend-label">{category.label}</span>
                   </span>
-                  <span>{category.percentage.toFixed(1)}%</span>
+                  <span className="dashboard-legend-stats">
+                    <span>{formatCurrency(category.value, currency)}</span>
+                    <span>{category.percentage.toFixed(1)}%</span>
+                  </span>
                 </Link>
               ))}
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -174,6 +194,10 @@ export default function DashboardCharts({
             <h2>Day-of-Week Pattern</h2>
             <p className="muted">Totals versus daily average across the last {patternData.days} days.</p>
           </div>
+          <div className="dashboard-inline-legend" aria-hidden="true">
+            <span><span className="dashboard-color-dot" style={{ backgroundColor: '#1d4ed8' }} /> Total</span>
+            <span><span className="dashboard-color-dot" style={{ backgroundColor: '#f59e0b' }} /> Average</span>
+          </div>
         </div>
 
         {patternChartData.length === 0 ? (
@@ -181,10 +205,10 @@ export default function DashboardCharts({
         ) : (
           <div className="dashboard-chart-shell dashboard-chart-shell-wide">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={patternChartData} margin={{ left: 4, right: 12, top: 12, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                <YAxis tickFormatter={(value) => formatCurrency(value, currency)} tickLine={false} axisLine={false} width={82} />
+              <BarChart data={patternChartData} margin={chartMargin}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                <XAxis dataKey="label" tickLine={false} axisLine={false} tick={axisTick} />
+                <YAxis tickFormatter={(value) => formatCompactCurrency(value, currency)} tickLine={false} axisLine={false} width={56} tick={axisTick} />
                 <Tooltip content={<DashboardTooltip currency={currency} />} />
                 <Bar dataKey="total" fill="#1d4ed8" radius={[8, 8, 0, 0]} name="Total" />
                 <Bar dataKey="average" fill="#f59e0b" radius={[8, 8, 0, 0]} name="Average" />
@@ -208,12 +232,12 @@ export default function DashboardCharts({
           <>
             <div className="dashboard-chart-shell dashboard-chart-shell-wide">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={spikesChartData} margin={{ left: 4, right: 12, top: 12, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
-                  <YAxis tickFormatter={(value) => formatCurrency(value, currency)} tickLine={false} axisLine={false} width={82} />
+                <LineChart data={spikesChartData} margin={chartMargin}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} minTickGap={16} tick={axisTick} />
+                  <YAxis tickFormatter={(value) => formatCompactCurrency(value, currency)} tickLine={false} axisLine={false} width={56} tick={axisTick} />
                   <Tooltip content={<DashboardTooltip currency={currency} />} />
-                  <Line type="monotone" dataKey="total" stroke="#dc2626" strokeWidth={3} dot={{ r: 4, fill: '#dc2626' }} activeDot={{ r: 6 }} name="Spike total" />
+                  <Line type="monotone" dataKey="total" stroke="#dc2626" strokeWidth={3} dot={{ r: 3, fill: '#dc2626' }} activeDot={{ r: 6 }} name="Spike total" />
                 </LineChart>
               </ResponsiveContainer>
             </div>

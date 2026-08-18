@@ -27,8 +27,8 @@ export function DashboardPage() {
 
   const profileQuery = useProfile()
   const summaryQuery = useSummary(periodParams)
-  const trendQuery = useMonthlyTrend({ months: 6, ...periodParams })
-  const categoryQuery = useCategories({ limit: 6, ...periodParams })
+  const trendQuery = useMonthlyTrend({ months: 12, ...periodParams })
+  const categoryQuery = useCategories({ limit: 50, ...periodParams })
   const patternQuery = useDailyPattern({ days: 30 })
   const spikesQuery = useSpikes({ days: 30, threshold: 2 })
   const projectionQuery = useProjection(periodParams)
@@ -123,34 +123,29 @@ export function DashboardPage() {
       </div>
 
       {summary && (
-        <div className="table-wrap" style={{ padding: '1rem', marginBottom: '1rem' }}>
-          <h2 style={{ marginTop: 0 }}>Monthly Summary</h2>
-          <div
-            style={{
-              display: 'grid',
-              gap: '0.75rem',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-            }}
-          >
-            <div style={{ border: '1px solid #f3f4f6', borderRadius: '0.5rem', padding: '0.75rem' }}>
-              <p className="muted" style={{ margin: 0 }}>Current Month</p>
-              <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
-                {formatCurrency(summary.currentMonth.totalExpenses, currency)}
-              </p>
+        <div className="table-wrap dashboard-card">
+          <div className="dashboard-card-header">
+            <div>
+              <h2>Monthly Summary</h2>
+              <p className="muted">Selected month versus the previous month.</p>
             </div>
-            <div style={{ border: '1px solid #f3f4f6', borderRadius: '0.5rem', padding: '0.75rem' }}>
-              <p className="muted" style={{ margin: 0 }}>Previous Month</p>
-              <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
-                {formatCurrency(summary.previousMonth.totalExpenses, currency)}
-              </p>
+          </div>
+          <div className="dashboard-summary-grid">
+            <div className="dashboard-stat">
+              <p className="muted">Current Month</p>
+              <p className="dashboard-stat-value">{formatCurrency(summary.currentMonth.totalExpenses, currency)}</p>
             </div>
-            <div style={{ border: '1px solid #f3f4f6', borderRadius: '0.5rem', padding: '0.75rem' }}>
-              <p className="muted" style={{ margin: 0 }}>Delta</p>
-              <p style={{ margin: 0, fontSize: '1.2rem', fontWeight: 700 }}>
+            <div className="dashboard-stat">
+              <p className="muted">Previous Month</p>
+              <p className="dashboard-stat-value">{formatCurrency(summary.previousMonth.totalExpenses, currency)}</p>
+            </div>
+            <div className="dashboard-stat">
+              <p className="muted">Delta</p>
+              <p className={`dashboard-stat-value is-trend-${summary.comparison.trend}`}>
                 {formatCurrency(summary.comparison.delta, currency)}
               </p>
-              <p style={{ margin: 0 }}>
-                {summary.comparison.percentChange}% / {summary.comparison.trend}
+              <p className="dashboard-stat-meta">
+                {summary.comparison.percentChange}% · {summary.comparison.trend}
               </p>
             </div>
           </div>
@@ -173,17 +168,27 @@ export function DashboardPage() {
       ) : null}
 
       {projection && (
-        <div className="table-wrap dashboard-card" style={{ padding: '1rem' }}>
-          <h2 style={{ marginTop: 0 }}>End-of-Month Projection</h2>
-          <p style={{ margin: 0 }}>
-            Month-to-date: <strong>{formatCurrency(projection.monthToDateExpenses, currency)}</strong>
-          </p>
-          <p style={{ margin: 0 }}>
-            Avg/day: <strong>{formatCurrency(projection.averagePerDay, currency)}</strong>
-          </p>
-          <p style={{ margin: 0 }}>
-            Projected total: <strong>{formatCurrency(projection.projectedMonthEndExpenses, currency)}</strong>
-          </p>
+        <div className="table-wrap dashboard-card">
+          <div className="dashboard-card-header">
+            <div>
+              <h2>End-of-Month Projection</h2>
+              <p className="muted">Estimated spend if the current daily average continues.</p>
+            </div>
+          </div>
+          <div className="dashboard-summary-grid">
+            <div className="dashboard-stat">
+              <p className="muted">Month-to-date</p>
+              <p className="dashboard-stat-value">{formatCurrency(projection.monthToDateExpenses, currency)}</p>
+            </div>
+            <div className="dashboard-stat">
+              <p className="muted">Avg / day</p>
+              <p className="dashboard-stat-value">{formatCurrency(projection.averagePerDay, currency)}</p>
+            </div>
+            <div className="dashboard-stat">
+              <p className="muted">Projected total</p>
+              <p className="dashboard-stat-value">{formatCurrency(projection.projectedMonthEndExpenses, currency)}</p>
+            </div>
+          </div>
         </div>
       )}
     </section>

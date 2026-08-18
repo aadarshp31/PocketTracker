@@ -132,11 +132,12 @@ export default class InsightsService {
     };
   }
 
-  async getCategoryBreakdown(userId: string, month?: number, year?: number, limit: number = 8) {
+  async getCategoryBreakdown(userId: string, month?: number, year?: number, limit: number = 50) {
     const now = new Date();
     const targetYear = year ?? now.getUTCFullYear();
     const targetMonth = month ?? now.getUTCMonth() + 1;
     const window = getMonthWindow(targetYear, targetMonth);
+    const safeLimit = Math.min(Math.max(limit || 50, 1), 50);
 
     const [rows, fullTotalRaw] = await Promise.all([
       sequelize.query(
@@ -159,7 +160,7 @@ export default class InsightsService {
           userId,
           startDate: window.start,
           endDate: window.end,
-          limit
+          limit: safeLimit
         },
         type: QueryTypes.SELECT
       }
