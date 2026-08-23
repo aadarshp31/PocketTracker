@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useProfile } from '../features/profile/hooks/useProfile'
 import { useUpdateProfile } from '../features/profile/hooks/useUpdateProfile'
 import { useAuth } from '../features/auth/contexts/AuthContext'
 import { CategoryKeywordSettings } from '../features/categorization/components/CategoryKeywordSettings'
+import { AppearanceSettingsSection } from '../shared/theme/ThemeToggle'
 
 const currencyOptions = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD', 'JPY']
 
@@ -55,7 +56,7 @@ export function ProfilePage() {
   if (profileQuery.isLoading) {
     return (
       <section>
-        <h1>Profile</h1>
+        <h1>Profile & Settings</h1>
         <p>Loading profile settings...</p>
       </section>
     )
@@ -64,7 +65,7 @@ export function ProfilePage() {
   if (profileQuery.isError || !profile) {
     return (
       <section>
-        <h1>Profile</h1>
+        <h1>Profile & Settings</h1>
         <p className="error">Failed to load profile settings.</p>
       </section>
     )
@@ -155,11 +156,16 @@ export function ProfilePage() {
 
   return (
     <section>
-      <h1>Profile</h1>
-      <p className="muted">Manage your account information and preferences.</p>
+      <h1>Profile & Settings</h1>
+      <p className="muted">Manage your account preferences, appearance, and security.</p>
 
-      <div className="table-wrap" style={{ padding: '1rem', maxWidth: '520px' }}>
-        <form onSubmit={onSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
+      {/* Appearance Theme Selector */}
+      <AppearanceSettingsSection />
+
+      {/* Account Details & Currency */}
+      <div className="table-wrap" style={{ padding: '1.25rem', maxWidth: '960px', marginTop: '1rem' }}>
+        <h2 style={{ marginTop: 0 }}>Account Information</h2>
+        <form onSubmit={onSubmit} style={{ display: 'grid', gap: '0.85rem', maxWidth: '460px' }}>
           <div>
             <p style={{ marginBottom: '0.25rem' }}><strong>Name</strong></p>
             <p style={{ margin: 0 }}>{profile.first_name} {profile.last_name}</p>
@@ -171,7 +177,7 @@ export function ProfilePage() {
           </div>
 
           <div style={{ display: 'grid', gap: '0.25rem' }}>
-            <label htmlFor="currency">Preferred Currency</label>
+            <label htmlFor="currency"><strong>Preferred Currency</strong></label>
             <select
               id="currency"
               value={currency}
@@ -186,17 +192,18 @@ export function ProfilePage() {
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
             <button type="submit" disabled={updateProfile.isPending}>
-              Save Settings
+              {updateProfile.isPending ? 'Saving...' : 'Save Account Settings'}
             </button>
-            {updateProfile.isSuccess ? <span>Saved.</span> : null}
+            {updateProfile.isSuccess ? <span style={{ color: 'var(--accent-emerald, #10b981)', fontWeight: 600 }}>Saved successfully.</span> : null}
             {updateProfile.isError ? <span className="error">Failed to save.</span> : null}
           </div>
         </form>
       </div>
 
-      <div className="table-wrap" style={{ padding: '1rem', maxWidth: '720px', marginTop: '1rem' }}>
+      {/* Two-Factor Authentication */}
+      <div className="table-wrap" style={{ padding: '1.25rem', maxWidth: '960px', marginTop: '1rem' }}>
         <h2 style={{ marginTop: 0 }}>Two-Factor Authentication</h2>
         <p className="muted" style={{ marginTop: 0 }}>
           Protect your account with a time-based code from Google Authenticator, Microsoft Authenticator, or a similar app.
@@ -205,11 +212,11 @@ export function ProfilePage() {
           Recovery option: keep a second authenticator enrolled on another device so you can still sign in if your main phone is unavailable.
         </p>
 
-        {mfaSuccess ? <p>{mfaSuccess}</p> : null}
+        {mfaSuccess ? <p style={{ color: 'var(--accent-emerald, #10b981)', fontWeight: 600 }}>{mfaSuccess}</p> : null}
         {mfaError ? <p className="error">{mfaError}</p> : null}
 
         {mfaFactors.length > 0 ? (
-          <div style={{ display: 'grid', gap: '0.75rem' }}>
+          <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '640px' }}>
             {mfaFactors.map((factor, index) => (
               <div
                 key={factor.id}
@@ -218,15 +225,19 @@ export function ProfilePage() {
                   justifyContent: 'space-between',
                   gap: '1rem',
                   alignItems: 'center',
-                  padding: '0.75rem',
-                  border: '1px solid var(--color-border, #ddd)',
+                  padding: '0.85rem 1rem',
+                  borderRadius: '0.75rem',
+                  border: '1px solid var(--color-border, rgba(229, 231, 235, 0.8))',
+                  background: 'var(--color-surface, rgba(255, 255, 255, 0.5))',
                 }}
               >
                 <div>
                   <strong>{factor.friendlyName || `Authenticator App ${index + 1}`}</strong>
-                  <p style={{ margin: '0.25rem 0 0' }}>Status: {factor.status}</p>
+                  <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--color-text-muted, #6b7280)' }}>
+                    Status: {factor.status}
+                  </p>
                 </div>
-                <button type="button" disabled={isMfaBusy} onClick={() => void onRemoveMfaFactor(factor.id)}>
+                <button type="button" className="danger-button" disabled={isMfaBusy} onClick={() => void onRemoveMfaFactor(factor.id)}>
                   Remove
                 </button>
               </div>
@@ -251,17 +262,19 @@ export function ProfilePage() {
 
         {pendingEnrollment ? (
           <div style={{ marginTop: '1rem', display: 'grid', gap: '0.75rem', maxWidth: '420px' }}>
-            <img
-              src={pendingEnrollment.qrCode}
-              alt="Scan this QR code in your authenticator app"
-              style={{ width: '220px', height: '220px', border: '1px solid var(--color-border, #ddd)', padding: '0.5rem' }}
-            />
+            <div style={{ padding: '0.75rem', background: '#ffffff', borderRadius: '0.75rem', display: 'inline-block', width: 'fit-content' }}>
+              <img
+                src={pendingEnrollment.qrCode}
+                alt="Scan this QR code in your authenticator app"
+                style={{ width: '200px', height: '200px', display: 'block' }}
+              />
+            </div>
 
             <div>
               <p style={{ marginBottom: '0.25rem' }}><strong>Manual setup code</strong></p>
-              <code>{pendingEnrollment.secret}</code>
+              <code style={{ padding: '0.35rem 0.65rem', borderRadius: '0.4rem', background: 'var(--color-surface-subtle, rgba(0,0,0,0.05))', border: '1px solid var(--color-border, #ddd)' }}>{pendingEnrollment.secret}</code>
             </div>
-            <p style={{ margin: 0, fontSize: '0.9rem' }}>
+            <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-muted, #6b7280)' }}>
               Add this in a second authenticator app if you want a backup sign-in option.
             </p>
 
@@ -284,6 +297,7 @@ export function ProfilePage() {
                 </button>
                 <button
                   type="button"
+                  className="ghost-button"
                   disabled={isMfaBusy}
                   onClick={() => {
                     setPendingEnrollment(null)
@@ -301,7 +315,7 @@ export function ProfilePage() {
 
       {/* Recovery codes section — only shown when MFA is enrolled */}
       {mfaFactors.length > 0 ? (
-        <div className="table-wrap" style={{ padding: '1rem', maxWidth: '720px', marginTop: '1rem' }}>
+        <div className="table-wrap" style={{ padding: '1.25rem', maxWidth: '960px', marginTop: '1rem' }}>
           <h2 style={{ marginTop: 0 }}>Recovery Codes</h2>
           <p className="muted" style={{ marginTop: 0 }}>
             Recovery codes let you access your account if you lose your authenticator device.
@@ -315,29 +329,30 @@ export function ProfilePage() {
             <p>
               <strong>{recoveryStatus.remaining}</strong> of {recoveryStatus.total} codes remaining.
               {recoveryStatus.remaining <= 3 ? (
-                <span style={{ color: '#dc2626' }}> Running low — consider regenerating.</span>
+                <span style={{ color: '#ef4444', fontWeight: 600 }}> Running low — consider regenerating.</span>
               ) : null}
             </p>
           ) : null}
 
           {/* Show newly generated codes (after enrollment or regeneration) */}
           {newRecoveryCodes.length > 0 ? (
-            <div style={{ display: 'grid', gap: '0.75rem' }}>
-              <p style={{ margin: 0, color: '#dc2626', fontWeight: 500 }}>
+            <div style={{ display: 'grid', gap: '0.75rem', maxWidth: '600px' }}>
+              <p style={{ margin: 0, color: '#ef4444', fontWeight: 600 }}>
                 Save these codes somewhere safe. They will not be shown again.
               </p>
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
-                gap: '0.4rem',
+                gap: '0.5rem',
                 padding: '1rem',
-                background: 'var(--color-surface, #f9f9f9)',
+                background: 'var(--color-surface, rgba(0,0,0,0.05))',
                 border: '1px solid var(--color-border, #ddd)',
+                borderRadius: '0.75rem',
                 fontFamily: 'monospace',
-                fontSize: '0.9rem',
+                fontSize: '0.95rem',
               }}>
                 {newRecoveryCodes.map((code) => (
-                  <span key={code}>{code}</span>
+                  <span key={code} style={{ letterSpacing: '0.05em' }}>{code}</span>
                 ))}
               </div>
               <label style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', cursor: 'pointer' }}>
@@ -346,7 +361,7 @@ export function ProfilePage() {
                   checked={recoverySaved}
                   onChange={(e) => setRecoverySaved(e.target.checked)}
                 />
-                I have saved these recovery codes in a secure place.
+                <span>I have saved these recovery codes in a secure place.</span>
               </label>
               <button
                 type="button"
@@ -358,17 +373,17 @@ export function ProfilePage() {
               </button>
             </div>
           ) : (
-            <div style={{ display: 'grid', gap: '0.5rem', maxWidth: '260px' }}>
+            <div style={{ display: 'grid', gap: '0.5rem', maxWidth: '280px' }}>
               {showRegenerateWarning ? (
                 <>
-                  <p style={{ margin: 0, color: '#dc2626', fontSize: '0.9rem' }}>
+                  <p style={{ margin: 0, color: '#ef4444', fontSize: '0.9rem' }}>
                     This will invalidate all existing codes. Continue?
                   </p>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button type="button" disabled={recoveryBusy} onClick={() => void onRegenerateRecoveryCodes()}>
+                    <button type="button" className="danger-button" disabled={recoveryBusy} onClick={() => void onRegenerateRecoveryCodes()}>
                       {recoveryBusy ? 'Regenerating...' : 'Yes, regenerate'}
                     </button>
-                    <button type="button" disabled={recoveryBusy} onClick={() => setShowRegenerateWarning(false)}>
+                    <button type="button" className="ghost-button" disabled={recoveryBusy} onClick={() => setShowRegenerateWarning(false)}>
                       Cancel
                     </button>
                   </div>
@@ -387,7 +402,7 @@ export function ProfilePage() {
         </div>
       ) : null}
 
-      <div className="table-wrap" style={{ padding: '1rem', maxWidth: '960px', marginTop: '1rem' }}>
+      <div className="table-wrap" style={{ padding: '1.25rem', maxWidth: '960px', marginTop: '1rem' }}>
         <CategoryKeywordSettings />
       </div>
     </section>

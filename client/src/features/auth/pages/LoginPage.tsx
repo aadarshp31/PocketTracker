@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { ThemeToggle } from '../../../shared/theme/ThemeToggle'
 
 function getErrorMessage(error: unknown, fallbackMessage: string) {
   return error instanceof Error ? error.message : fallbackMessage
@@ -87,7 +88,6 @@ export function LoginPage() {
 
     try {
       await verifyRecoveryCode(recoveryCode.trim())
-      // Flag for AppShell to show re-enrollment banner
       sessionStorage.setItem('pt:recovery_used', '1')
       navigate(redirectTo, { replace: true })
     } catch (error) {
@@ -97,178 +97,202 @@ export function LoginPage() {
     }
   }
 
-  if (isMfaRequired) {
+  if (isMfaRequired && showRecovery) {
     return (
-      <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
-        <h1>Verify Sign In</h1>
-        <p>Enter the 6-digit code from {pendingMfaFactorLabel || 'your authenticator app'}.</p>
-        {info ? <div style={{ color: '#2563eb', marginBottom: '15px' }}>{info}</div> : null}
-
-        {pendingMfaFactors.length > 1 ? (
-          <div style={{ marginBottom: '15px' }}>
-            <label htmlFor="mfa-device">Use authenticator device:</label>
-            <select
-              id="mfa-device"
-              disabled={isLoading}
-              onChange={(e) => selectPendingMfaFactor(e.target.value)}
-              style={{ width: '100%', padding: '8px' }}
-              defaultValue={pendingMfaFactors[0]?.id}
-            >
-              {pendingMfaFactors.map((factor) => (
-                <option key={factor.id} value={factor.id}>
-                  {factor.friendlyName || 'Authenticator App'}
-                </option>
-              ))}
-            </select>
-            <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
-              Use a backup authenticator device if your primary phone is unavailable.
-            </p>
+      <div className="auth-page-container">
+        <div className="auth-card table-wrap">
+          <div className="auth-card-top">
+            <div className="auth-logo">🎯 PocketTracker</div>
+            <ThemeToggle variant="compact" />
           </div>
-        ) : (
-          <p style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
-            If you might lose access to this device, add a second authenticator app from Profile settings as a backup.
+
+          <h1 className="auth-title">Account Recovery</h1>
+          <p className="muted">Enter one of your saved recovery codes to regain access.</p>
+          <p className="auth-warning-box">
+            ⚠️ Warning: using a recovery code will remove all authenticators from your account.
+            You will need to set up a new authenticator after signing in.
           </p>
-        )}
 
-        <form onSubmit={handleMfaSubmit}>
-          <div style={{ marginBottom: '15px' }}>
-            <label>Authenticator Code:</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              value={mfaCode}
-              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              required
+          {info ? <div className="auth-info-box">{info}</div> : null}
+
+          <form onSubmit={handleRecoverySubmit} className="auth-form">
+            <div className="auth-field">
+              <label htmlFor="recovery-input">Recovery Code</label>
+              <input
+                id="recovery-input"
+                type="text"
+                placeholder="xxxx-xxxx-xxxx-xxxx"
+                value={recoveryCode}
+                onChange={(e) => setRecoveryCode(e.target.value)}
+                required
+                disabled={isLoading}
+                autoComplete="off"
+                style={{ fontFamily: 'monospace' }}
+              />
+            </div>
+
+            {error && <div className="error">{error}</div>}
+
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={isLoading || recoveryCode.trim().length === 0}
+              style={{ width: '100%' }}
+            >
+              {isLoading ? 'Verifying...' : 'Use Recovery Code'}
+            </button>
+          </form>
+
+          <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={() => { setShowRecovery(false); setError(''); }}
               disabled={isLoading}
-              style={{ width: '100%', padding: '8px' }}
-            />
+              className="ghost-button"
+              style={{ fontSize: '0.88rem' }}
+            >
+              Back to authenticator code
+            </button>
           </div>
-
-          {error && <div style={{ color: 'red', marginBottom: '15px' }}>{error}</div>}
-
-          <button 
-            type="submit" 
-            disabled={isLoading || mfaCode.length !== 6}
-            style={{ width: '100%', padding: '10px', cursor: 'pointer' }}
-          >
-            {isLoading ? 'Verifying...' : 'Verify Code'}
-          </button>
-        </form>
-
-        <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={() => { setShowRecovery(true); setError(''); setInfo(''); }}
-            disabled={isLoading}
-            style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}
-          >
-            Lost your phone? Use a recovery code
-          </button>
         </div>
       </div>
     )
   }
 
-  if (isMfaRequired && showRecovery) {
+  if (isMfaRequired) {
     return (
-      <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
-        <h1>Account Recovery</h1>
-        <p>Enter one of your saved recovery codes to regain access.</p>
-        <p style={{ fontSize: '0.85rem', color: '#6b7280' }}>
-          Warning: using a recovery code will remove all authenticators from your account.
-          You will need to set up a new authenticator after signing in.
-        </p>
-
-        {info ? <div style={{ color: '#2563eb', marginBottom: '15px' }}>{info}</div> : null}
-
-        <form onSubmit={handleRecoverySubmit}>
-          <div style={{ marginBottom: '15px' }}>
-            <label>Recovery Code:</label>
-            <input
-              type="text"
-              placeholder="xxxx-xxxx-xxxx-xxxx"
-              value={recoveryCode}
-              onChange={(e) => setRecoveryCode(e.target.value)}
-              required
-              disabled={isLoading}
-              autoComplete="off"
-              style={{ width: '100%', padding: '8px', fontFamily: 'monospace' }}
-            />
+      <div className="auth-page-container">
+        <div className="auth-card table-wrap">
+          <div className="auth-card-top">
+            <div className="auth-logo">🎯 PocketTracker</div>
+            <ThemeToggle variant="compact" />
           </div>
 
-          {error && <div style={{ color: 'red', marginBottom: '15px' }}>{error}</div>}
+          <h1 className="auth-title">Verify Sign In</h1>
+          <p className="muted">Enter the 6-digit code from {pendingMfaFactorLabel || 'your authenticator app'}.</p>
+          {info ? <div className="auth-info-box">{info}</div> : null}
 
-          <button
-            type="submit"
-            disabled={isLoading || recoveryCode.trim().length === 0}
-            style={{ width: '100%', padding: '10px', cursor: 'pointer' }}
-          >
-            {isLoading ? 'Verifying...' : 'Use Recovery Code'}
-          </button>
-        </form>
+          {pendingMfaFactors.length > 1 ? (
+            <div className="auth-field" style={{ marginBottom: '1rem' }}>
+              <label htmlFor="mfa-device">Authenticator Device</label>
+              <select
+                id="mfa-device"
+                disabled={isLoading}
+                onChange={(e) => selectPendingMfaFactor(e.target.value)}
+                defaultValue={pendingMfaFactors[0]?.id}
+              >
+                {pendingMfaFactors.map((factor) => (
+                  <option key={factor.id} value={factor.id}>
+                    {factor.friendlyName || 'Authenticator App'}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
 
-        <div style={{ marginTop: '15px', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={() => { setShowRecovery(false); setError(''); }}
-            disabled={isLoading}
-            style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}
-          >
-            Back to authenticator code
-          </button>
+          <form onSubmit={handleMfaSubmit} className="auth-form">
+            <div className="auth-field">
+              <label htmlFor="mfa-code-input">Authenticator Code</label>
+              <input
+                id="mfa-code-input"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                value={mfaCode}
+                onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                required
+                disabled={isLoading}
+                placeholder="123456"
+                autoFocus
+              />
+            </div>
+
+            {error && <div className="error">{error}</div>}
+
+            <button 
+              type="submit" 
+              className="primary-button"
+              disabled={isLoading || mfaCode.length !== 6}
+              style={{ width: '100%' }}
+            >
+              {isLoading ? 'Verifying...' : 'Verify Code'}
+            </button>
+          </form>
+
+          <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={() => { setShowRecovery(true); setError(''); setInfo(''); }}
+              disabled={isLoading}
+              className="ghost-button"
+              style={{ fontSize: '0.88rem' }}
+            >
+              Lost your phone? Use a recovery code
+            </button>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
-      <h1>Login</h1>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
-          <label>Email:</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={isLoading}
-            style={{ width: '100%', padding: '8px' }}
-          />
+    <div className="auth-page-container">
+      <div className="auth-card table-wrap">
+        <div className="auth-card-top">
+          <div className="auth-logo">🎯 PocketTracker</div>
+          <ThemeToggle variant="compact" />
         </div>
-        
-        <div style={{ marginBottom: '15px' }}>
-          <label>Password:</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={isLoading}
-            style={{ width: '100%', padding: '8px' }}
-          />
-          <div style={{ textAlign: 'right', marginTop: '4px' }}>
-            <Link to="/auth/forgot-password" style={{ fontSize: '0.875rem' }}>Forgot password?</Link>
+
+        <h1 className="auth-title">Welcome Back</h1>
+        <p className="muted" style={{ marginBottom: '1.25rem' }}>Sign in to access your financial dashboard.</p>
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="auth-field">
+            <label htmlFor="email">Email Address</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={isLoading}
+              placeholder="you@example.com"
+            />
           </div>
-        </div>
+          
+          <div className="auth-field">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label htmlFor="password">Password</label>
+              <Link to="/auth/forgot-password" className="auth-inline-link">Forgot password?</Link>
+            </div>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={isLoading}
+            />
+          </div>
 
-  {info && <div style={{ color: '#2563eb', marginBottom: '15px' }}>{info}</div>}
-        {error && <div style={{ color: 'red', marginBottom: '15px' }}>{error}</div>}
+          {info ? <div className="auth-info-box">{info}</div> : null}
+          {error && <div className="error">{error}</div>}
 
-        <button 
-          type="submit" 
-          disabled={isLoading}
-          style={{ width: '100%', padding: '10px', cursor: 'pointer' }}
-        >
-          {isLoading ? 'Signing in...' : 'Sign In'}
-        </button>
-      </form>
+          <button 
+            type="submit" 
+            className="primary-button"
+            disabled={isLoading}
+            style={{ width: '100%', marginTop: '0.5rem' }}
+          >
+            {isLoading ? 'Signing in...' : 'Sign In'}
+          </button>
+        </form>
 
-      <p style={{ marginTop: '20px', textAlign: 'center' }}>
-        Don't have an account? <Link to="/auth/signup">Sign up</Link>
-      </p>
+        <p className="auth-footer-text">
+          Don't have an account? <Link to="/auth/signup" className="auth-inline-link">Sign up</Link>
+        </p>
+      </div>
     </div>
   )
 }

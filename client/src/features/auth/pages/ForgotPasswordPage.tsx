@@ -1,6 +1,7 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { ThemeToggle } from '../../../shared/theme/ThemeToggle'
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -27,51 +28,70 @@ export function ForgotPasswordPage() {
 
   if (submitted) {
     return (
-      <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
-        <h1>Check Your Email</h1>
-        <p>
-          If an account with that email exists, you will receive a password reset link shortly.
-        </p>
-        <p style={{ marginTop: '20px' }}>
-          <Link to="/auth/login">Back to login</Link>
-        </p>
+      <div className="auth-page-container">
+        <div className="auth-card table-wrap">
+          <div className="auth-card-top">
+            <div className="auth-logo">🎯 PocketTracker</div>
+            <ThemeToggle variant="compact" />
+          </div>
+
+          <h1 className="auth-title">Check Your Email</h1>
+          <p className="muted" style={{ lineHeight: 1.6 }}>
+            If an account with that email exists, you will receive a password reset link shortly.
+          </p>
+          <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+            <Link to="/auth/login" className="ghost-button" style={{ textDecoration: 'none', display: 'inline-block' }}>
+              Back to Sign In
+            </Link>
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}>
-      <h1>Forgot Password</h1>
-      <p style={{ marginBottom: '20px', color: '#555' }}>
-        Enter your email and we'll send you a link to reset your password.
-      </p>
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
-          <label>Email:</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={isLoading}
-            style={{ width: '100%', padding: '8px' }}
-          />
+    <div className="auth-page-container">
+      <div className="auth-card table-wrap">
+        <div className="auth-card-top">
+          <div className="auth-logo">🎯 PocketTracker</div>
+          <ThemeToggle variant="compact" />
         </div>
 
-        {error && <div style={{ color: 'red', marginBottom: '15px' }}>{error}</div>}
+        <h1 className="auth-title">Reset Password</h1>
+        <p className="muted" style={{ marginBottom: '1.25rem' }}>
+          Enter your email address and we will send you a link to reset your password.
+        </p>
 
-        <button
-          type="submit"
-          disabled={isLoading}
-          style={{ width: '100%', padding: '10px', cursor: 'pointer' }}
-        >
-          {isLoading ? 'Sending...' : 'Send Reset Link'}
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="auth-field">
+            <label htmlFor="reset-email">Email Address</label>
+            <input
+              id="reset-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={isLoading}
+              placeholder="you@example.com"
+            />
+          </div>
 
-      <p style={{ marginTop: '20px', textAlign: 'center' }}>
-        <Link to="/auth/login">Back to login</Link>
-      </p>
+          {error && <div className="error">{error}</div>}
+
+          <button 
+            type="submit" 
+            className="primary-button"
+            disabled={isLoading}
+            style={{ width: '100%', marginTop: '0.5rem' }}
+          >
+            {isLoading ? 'Sending link...' : 'Send Reset Link'}
+          </button>
+        </form>
+
+        <p className="auth-footer-text">
+          Remembered your password? <Link to="/auth/login" className="auth-inline-link">Sign in</Link>
+        </p>
+      </div>
     </div>
   )
 }

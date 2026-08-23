@@ -1,7 +1,8 @@
-import { Suspense, lazy } from 'react'
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+﻿import { Suspense, lazy } from 'react'
+import { createBrowserRouter, Navigate, Link } from 'react-router-dom'
 import { AppShell } from './shell/AppShell'
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute'
+import { ThemeToggle } from '../shared/theme/ThemeToggle'
 
 const DashboardPage = lazy(() => import('../pages/DashboardPage').then((module) => ({ default: module.DashboardPage })))
 const ProfilePage = lazy(() => import('../pages/SettingsPage').then((module) => ({ default: module.ProfilePage })))
@@ -13,7 +14,29 @@ const ForgotPasswordPage = lazy(() => import('../features/auth/pages/ForgotPassw
 const ResetPasswordPage = lazy(() => import('../features/auth/pages/ResetPasswordPage').then((module) => ({ default: module.ResetPasswordPage })))
 
 function RouteLoader({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<div style={{ padding: '2rem' }}>Loading...</div>}>{children}</Suspense>
+  return <Suspense fallback={<div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted, #6b7280)' }}>Loading...</div>}>{children}</Suspense>
+}
+
+function CheckEmailScreen() {
+  return (
+    <div className="auth-page-container">
+      <div className="auth-card table-wrap">
+        <div className="auth-card-top">
+          <div className="auth-logo">🎯 PocketTracker</div>
+          <ThemeToggle variant="compact" />
+        </div>
+        <h1 className="auth-title">Check Your Email</h1>
+        <p className="muted" style={{ lineHeight: 1.6 }}>
+          We have sent a verification link to your email. Please check your inbox and click the link to confirm your account.
+        </p>
+        <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+          <Link to="/auth/login" className="primary-button" style={{ textDecoration: 'none', display: 'inline-block' }}>
+            Back to Sign In
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export const router = createBrowserRouter([
@@ -22,7 +45,7 @@ export const router = createBrowserRouter([
     children: [
       { path: 'login', element: <RouteLoader><LoginPage /></RouteLoader> },
       { path: 'signup', element: <RouteLoader><SignupPage /></RouteLoader> },
-      { path: 'check-email', element: <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px' }}><h1>Check Your Email</h1><p>Please check your email to confirm your account.</p></div> },
+      { path: 'check-email', element: <CheckEmailScreen /> },
       { path: 'forgot-password', element: <RouteLoader><ForgotPasswordPage /></RouteLoader> },
       { path: 'reset-password', element: <RouteLoader><ResetPasswordPage /></RouteLoader> },
     ],
