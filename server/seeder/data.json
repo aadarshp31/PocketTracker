@@ -956,7 +956,7 @@
       "updatedAt": "5/3/2025"
     },
     {
-      "id": "inv-cat-001-0000-0000-000000000001",
+      "id": "10000000-0000-4000-8000-000000000001",
       "name": "Mutual Funds",
       "type": "investment",
       "is_default": "true",
@@ -965,7 +965,7 @@
       "updatedAt": "2024-01-01"
     },
     {
-      "id": "inv-cat-002-0000-0000-000000000002",
+      "id": "10000000-0000-4000-8000-000000000002",
       "name": "Stocks & ETFs",
       "type": "investment",
       "is_default": "true",
@@ -974,7 +974,7 @@
       "updatedAt": "2024-01-01"
     },
     {
-      "id": "inv-cat-003-0000-0000-000000000003",
+      "id": "10000000-0000-4000-8000-000000000003",
       "name": "Fixed Deposit",
       "type": "investment",
       "is_default": "true",
@@ -983,7 +983,7 @@
       "updatedAt": "2024-01-01"
     },
     {
-      "id": "inv-cat-004-0000-0000-000000000004",
+      "id": "10000000-0000-4000-8000-000000000004",
       "name": "Provident Fund",
       "type": "investment",
       "is_default": "true",
@@ -992,7 +992,7 @@
       "updatedAt": "2024-01-01"
     },
     {
-      "id": "inv-cat-005-0000-0000-000000000005",
+      "id": "10000000-0000-4000-8000-000000000005",
       "name": "Cryptocurrency",
       "type": "investment",
       "is_default": "true",
@@ -1001,7 +1001,7 @@
       "updatedAt": "2024-01-01"
     },
     {
-      "id": "inv-cat-006-0000-0000-000000000006",
+      "id": "10000000-0000-4000-8000-000000000006",
       "name": "Gold & Commodities",
       "type": "investment",
       "is_default": "true",
@@ -1010,7 +1010,7 @@
       "updatedAt": "2024-01-01"
     },
     {
-      "id": "inv-cat-007-0000-0000-000000000007",
+      "id": "10000000-0000-4000-8000-000000000007",
       "name": "Other Investment",
       "type": "investment",
       "is_default": "true",
@@ -1019,7 +1019,7 @@
       "updatedAt": "2024-01-01"
     },
     {
-      "id": "trf-cat-001-0000-0000-000000000001",
+      "id": "20000000-0000-4000-8000-000000000001",
       "name": "Internal Transfer",
       "type": "transfer",
       "is_default": "true",
@@ -1028,7 +1028,7 @@
       "updatedAt": "2024-01-01"
     },
     {
-      "id": "trf-cat-002-0000-0000-000000000002",
+      "id": "20000000-0000-4000-8000-000000000002",
       "name": "Credit Card Payment",
       "type": "transfer",
       "is_default": "true",
@@ -1037,7 +1037,7 @@
       "updatedAt": "2024-01-01"
     },
     {
-      "id": "trf-cat-003-0000-0000-000000000003",
+      "id": "20000000-0000-4000-8000-000000000003",
       "name": "Loan Repayment",
       "type": "transfer",
       "is_default": "true",
