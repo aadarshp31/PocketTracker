@@ -13,7 +13,7 @@ const TransactionModel = sequelize.define('transaction', {
     allowNull: false
   },
   type: {
-    type: DataTypes.ENUM("income", "expense"),
+    type: DataTypes.ENUM("income", "expense", "investment", "transfer"),
     allowNull: false
   },
   description: {

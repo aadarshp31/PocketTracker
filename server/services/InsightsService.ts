@@ -91,43 +91,66 @@ export default class InsightsService {
     const currentWindow = getMonthWindow(targetYear, targetMonth);
     const previousWindow = getMonthWindow(previous.year, previous.month);
 
-    const [currentTotalRaw, previousTotalRaw] = await Promise.all([
+    const [
+      currentExpensesRaw, previousExpensesRaw,
+      currentIncomeRaw,
+      currentInvestmentsRaw, previousInvestmentsRaw,
+      currentTransfersRaw,
+    ] = await Promise.all([
       TransactionModel.sum("amount", {
-        where: {
-          user_id: userId,
-          type: "expense",
-          date: { [Op.between]: [currentWindow.start, currentWindow.end] }
-        }
+        where: { user_id: userId, type: "expense", date: { [Op.between]: [currentWindow.start, currentWindow.end] } }
       }),
       TransactionModel.sum("amount", {
-        where: {
-          user_id: userId,
-          type: "expense",
-          date: { [Op.between]: [previousWindow.start, previousWindow.end] }
-        }
-      })
+        where: { user_id: userId, type: "expense", date: { [Op.between]: [previousWindow.start, previousWindow.end] } }
+      }),
+      TransactionModel.sum("amount", {
+        where: { user_id: userId, type: "income", date: { [Op.between]: [currentWindow.start, currentWindow.end] } }
+      }),
+      TransactionModel.sum("amount", {
+        where: { user_id: userId, type: "investment", date: { [Op.between]: [currentWindow.start, currentWindow.end] } }
+      }),
+      TransactionModel.sum("amount", {
+        where: { user_id: userId, type: "investment", date: { [Op.between]: [previousWindow.start, previousWindow.end] } }
+      }),
+      TransactionModel.sum("amount", {
+        where: { user_id: userId, type: "transfer", date: { [Op.between]: [currentWindow.start, currentWindow.end] } }
+      }),
     ]);
 
-    const currentTotal = Number(currentTotalRaw || 0);
-    const previousTotal = Number(previousTotalRaw || 0);
-    const delta = currentTotal - previousTotal;
-    const percentChange = previousTotal === 0 ? 0 : (delta / previousTotal) * 100;
+    const currentExpenses = Number(currentExpensesRaw || 0);
+    const previousExpenses = Number(previousExpensesRaw || 0);
+    const currentIncome = Number(currentIncomeRaw || 0);
+    const currentInvestments = Number(currentInvestmentsRaw || 0);
+    const previousInvestments = Number(previousInvestmentsRaw || 0);
+    const currentTransfers = Number(currentTransfersRaw || 0);
+
+    const delta = currentExpenses - previousExpenses;
+    const percentChange = previousExpenses === 0 ? 0 : (delta / previousExpenses) * 100;
+
+    const investmentDelta = currentInvestments - previousInvestments;
+    const savingsRate = currentIncome === 0 ? 0 : (currentInvestments / currentIncome) * 100;
 
     return {
       currentMonth: {
         month: targetMonth,
         year: targetYear,
-        totalExpenses: toFixed2(currentTotal)
+        totalExpenses: toFixed2(currentExpenses),
+        totalIncome: toFixed2(currentIncome),
+        totalInvestments: toFixed2(currentInvestments),
+        totalTransfers: toFixed2(currentTransfers),
+        savingsRate: toFixed2(savingsRate),
       },
       previousMonth: {
         month: previous.month,
         year: previous.year,
-        totalExpenses: toFixed2(previousTotal)
+        totalExpenses: toFixed2(previousExpenses),
+        totalInvestments: toFixed2(previousInvestments),
       },
       comparison: {
         delta: toFixed2(delta),
         percentChange: toFixed2(percentChange),
-        trend: delta > 0 ? "up" : delta < 0 ? "down" : "flat"
+        trend: delta > 0 ? "up" : delta < 0 ? "down" : "flat",
+        investmentDelta: toFixed2(investmentDelta),
       }
     };
   }

@@ -7,16 +7,22 @@ export interface SummaryData {
     month: number
     year: number
     totalExpenses: string
+    totalIncome: string
+    totalInvestments: string
+    totalTransfers: string
+    savingsRate: string
   }
   previousMonth: {
     month: number
     year: number
     totalExpenses: string
+    totalInvestments: string
   }
   comparison: {
     delta: string
     percentChange: string
     trend: 'up' | 'down' | 'flat'
+    investmentDelta: string
   }
 }
 

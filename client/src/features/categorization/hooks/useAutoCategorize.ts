@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { TransactionType } from '../../transactions/types'
 import {
   categorizeTransaction,
   type CategorizableCategory,
@@ -7,7 +8,7 @@ import {
 
 interface UseAutoCategorizeOptions {
   description: string
-  type: 'income' | 'expense'
+  type: TransactionType
   categories: CategorizableCategory[]
   userRules: CategoryKeywordRule[]
   categoryManuallySet: boolean

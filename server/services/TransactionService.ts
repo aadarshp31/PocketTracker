@@ -7,7 +7,7 @@ export interface GetAllTransactionsOptions {
   page?: number;
   limit?: number;
   order?: Order;
-  type?: "income" | "expense";
+  type?: "income" | "expense" | "investment" | "transfer";
   category_id?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -16,7 +16,7 @@ export interface GetAllTransactionsOptions {
 
 export interface BulkCreatePayload {
   amount: number;
-  type: "income" | "expense";
+  type: "income" | "expense" | "investment" | "transfer";
   description: string;
   date: string;
   category_id: string;
@@ -34,7 +34,7 @@ export default class TransactionService {
   private buildTransactionWhere(userId: string, filters: GetAllTransactionsOptions): WhereOptions {
     const where: WhereOptions = { user_id: userId };
 
-    if (filters.type === "income" || filters.type === "expense") {
+    if (filters.type === "income" || filters.type === "expense" || filters.type === "investment" || filters.type === "transfer") {
       where.type = filters.type;
     }
 
@@ -93,20 +93,28 @@ export default class TransactionService {
   async getTransactionSummary(userId: string, filters: GetAllTransactionsOptions = {}) {
     const where = this.buildTransactionWhere(userId, filters);
 
-    const [incomeRaw, expensesRaw, transactionCount] = await Promise.all([
+    const [incomeRaw, expensesRaw, investmentsRaw, transfersRaw, transactionCount] = await Promise.all([
       TransactionModel.sum("amount", { where: { ...where, type: "income" } }),
       TransactionModel.sum("amount", { where: { ...where, type: "expense" } }),
+      TransactionModel.sum("amount", { where: { ...where, type: "investment" } }),
+      TransactionModel.sum("amount", { where: { ...where, type: "transfer" } }),
       TransactionModel.count({ where }),
     ]);
 
     const income = Number(incomeRaw ?? 0);
     const expenses = Number(expensesRaw ?? 0);
-    const net = income - expenses;
+    const investments = Number(investmentsRaw ?? 0);
+    const transfers = Number(transfersRaw ?? 0);
+    const net = income - expenses - investments - transfers;
+    const savingsRate = income === 0 ? 0 : (investments / income) * 100;
 
     return {
       income: income.toFixed(2),
       expenses: expenses.toFixed(2),
+      investments: investments.toFixed(2),
+      transfers: transfers.toFixed(2),
       net: net.toFixed(2),
+      savingsRate: savingsRate.toFixed(2),
       transactionCount,
     };
   }
@@ -236,8 +244,8 @@ export default class TransactionService {
       if (!tx.description?.trim()) {
         throw new Error(`Row ${index + 1}: description is required`);
       }
-      if (!tx.type || (tx.type !== "income" && tx.type !== "expense")) {
-        throw new Error(`Row ${index + 1}: type must be income or expense`);
+      if (!tx.type || !["income", "expense", "investment", "transfer"].includes(tx.type)) {
+        throw new Error(`Row ${index + 1}: type must be income, expense, investment, or transfer`);
       }
       if (!Number.isFinite(tx.amount) || tx.amount <= 0) {
         throw new Error(`Row ${index + 1}: amount must be greater than 0`);

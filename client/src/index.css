@@ -3306,3 +3306,140 @@ button:disabled {
   background: rgba(255, 255, 255, 0.03);
   border-color: var(--color-border);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INVESTMENT & TRANSFER TYPES — New styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Type pill variants ─────────────────────────────────────────────────── */
+.type-pill--investment.is-active {
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
+}
+.type-pill--transfer.is-active {
+  background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(8, 145, 178, 0.35);
+}
+
+/* ── Transaction totals bar — investment & transfer values ──────────────── */
+.transaction-totals-value.is-investment {
+  color: #7c3aed;
+  font-weight: 700;
+}
+.transaction-totals-value.is-transfer {
+  color: #0891b2;
+  font-weight: 700;
+}
+.transaction-totals-value.is-savings-high { color: #16a34a; font-weight: 700; }
+.transaction-totals-value.is-savings-mid  { color: #d97706; font-weight: 700; }
+.transaction-totals-value.is-savings-low  { color: #dc2626; font-weight: 700; }
+
+/* ── Dashboard stat — transfer colour ──────────────────────────────────── */
+.dashboard-stat-value.is-transfer { color: #0891b2; }
+
+/* ── KPI Row ────────────────────────────────────────────────────────────── */
+.dashboard-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 0;
+}
+
+.dashboard-kpi-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.dashboard-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+}
+
+.kpi-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.kpi-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.kpi-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.kpi-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kpi-sublabel {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  margin-top: 0.1rem;
+}
+
+.kpi-delta {
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-top: 0.1rem;
+  border-radius: 0.25rem;
+  padding: 0.05rem 0.3rem;
+  display: inline-block;
+}
+.kpi-delta--good { background: #dcfce7; color: #166534; }
+.kpi-delta--bad  { background: #fee2e2; color: #dc2626; }
+
+/* KPI card colour accents */
+.kpi-income   { border-left: 4px solid #16a34a; }
+.kpi-expense  { border-left: 4px solid #dc2626; }
+.kpi-investment { border-left: 4px solid #7c3aed; }
+
+.kpi-savings-rate           { border-left: 4px solid #9ca3af; }
+.kpi-savings-rate.rate-high { border-left-color: #16a34a; }
+.kpi-savings-rate.rate-high .kpi-value { color: #16a34a; }
+.kpi-savings-rate.rate-mid  { border-left-color: #d97706; }
+.kpi-savings-rate.rate-mid  .kpi-value { color: #d97706; }
+.kpi-savings-rate.rate-low  { border-left-color: #dc2626; }
+.kpi-savings-rate.rate-low  .kpi-value { color: #dc2626; }
+
+/* ── Bulk preview — investment & transfer type badges ───────────────────── */
+.bulk-preview-type-badge.investment { background: #ede9fe; color: #6d28d9; }
+.bulk-preview-type-badge.transfer   { background: #cffafe; color: #0e7490; }
+
+/* ── Dark mode overrides ────────────────────────────────────────────────── */
+[data-theme="dark"] .dashboard-kpi-card {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+}
+[data-theme="dark"] .kpi-delta--good { background: rgba(22, 163, 74, 0.15); color: #4ade80; }
+[data-theme="dark"] .kpi-delta--bad  { background: rgba(220, 38, 38, 0.15); color: #f87171; }
+[data-theme="dark"] .transaction-totals-value.is-investment { color: #a78bfa; }
+[data-theme="dark"] .transaction-totals-value.is-transfer   { color: #22d3ee; }
+[data-theme="dark"] .bulk-preview-type-badge.investment { background: rgba(109, 40, 217, 0.25); color: #c4b5fd; }
+[data-theme="dark"] .bulk-preview-type-badge.transfer   { background: rgba(8, 145, 178, 0.25); color: #67e8f9; }
+[data-theme="dark"] .type-pill--investment.is-active { box-shadow: 0 2px 8px rgba(124, 58, 237, 0.5); }
+[data-theme="dark"] .type-pill--transfer.is-active   { box-shadow: 0 2px 8px rgba(8, 145, 178, 0.5); }

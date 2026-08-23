@@ -4,7 +4,10 @@ import type { GetTransactionsParams } from './getTransactions'
 export interface TransactionSummary {
   income: string
   expenses: string
+  investments: string
+  transfers: string
   net: string
+  savingsRate: string
   transactionCount: number
 }
 

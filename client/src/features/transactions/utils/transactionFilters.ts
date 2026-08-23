@@ -173,7 +173,13 @@ export function buildFilterSummary(
   const parts: string[] = [getPeriodLabel(filters.period)]
 
   if (filters.type !== 'all') {
-    parts.push(filters.type === 'income' ? 'Income' : 'Expense')
+    const typeLabels: Record<string, string> = {
+      income: 'Income',
+      expense: 'Expense',
+      investment: 'Investment',
+      transfer: 'Transfer',
+    }
+    parts.push(typeLabels[filters.type] ?? filters.type)
   }
 
   if (filters.category_id && categoryName) {

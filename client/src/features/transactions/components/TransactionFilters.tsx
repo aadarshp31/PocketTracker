@@ -51,6 +51,18 @@ export function TransactionFilters({
     return categories.filter((category) => category.type === filters.type)
   }, [categories, filters.type])
 
+  // When switching to investment/transfer, clear category that belongs to a different type
+  const onTypeChange_inner = (type: TypeFilter) => {
+    const next: Partial<TransactionFilterState> = { type }
+    if (filters.category_id) {
+      const selected = categories.find((category) => category.id === filters.category_id)
+      if (selected && type !== 'all' && selected.type !== type) {
+        next.category_id = ''
+      }
+    }
+    onChange({ ...filters, ...next })
+  }
+
   const appliedCategoryName = categories.find((category) => category.id === appliedFilters.category_id)?.name
   const appliedSummaryParts = buildFilterSummary(appliedFilters, appliedCategoryName)
   const showAppliedSummary = hasActiveFilters(appliedFilters)
@@ -60,14 +72,7 @@ export function TransactionFilters({
   }
 
   function onTypeChange(type: TypeFilter) {
-    const next: Partial<TransactionFilterState> = { type }
-    if (filters.category_id) {
-      const selected = categories.find((category) => category.id === filters.category_id)
-      if (selected && type !== 'all' && selected.type !== type) {
-        next.category_id = ''
-      }
-    }
-    onChange({ ...filters, ...next })
+    onTypeChange_inner(type)
   }
 
   return (
@@ -169,15 +174,19 @@ export function TransactionFilters({
       </div>
 
       <div className="transaction-type-filter" role="tablist" aria-label="transaction type filter">
-        {(['all', 'expense', 'income'] as TypeFilter[]).map((type) => (
+        {(['all', 'expense', 'income', 'investment', 'transfer'] as TypeFilter[]).map((type) => (
           <button
             key={type}
             type="button"
-            className={`type-pill ${filters.type === type ? 'is-active' : ''}`}
+            className={`type-pill type-pill--${type} ${filters.type === type ? 'is-active' : ''}`}
             onClick={() => onTypeChange(type)}
             disabled={disabled}
           >
-            {type === 'all' ? 'All' : type === 'expense' ? 'Expense' : 'Income'}
+            {type === 'all' ? 'All'
+              : type === 'expense' ? '💳 Expense'
+              : type === 'income' ? '💰 Income'
+              : type === 'investment' ? '📈 Investment'
+              : '🔄 Transfer'}
           </button>
         ))}
       </div>

@@ -36,8 +36,8 @@ export default class TransactionController {
       options.page = Number.isFinite(parsedPage) ? parsedPage : 1;
     }
 
-    if (req.query.type === "income" || req.query.type === "expense") {
-      options.type = req.query.type;
+    if (["income", "expense", "investment", "transfer"].includes(req.query.type as string)) {
+      options.type = req.query.type as "income" | "expense" | "investment" | "transfer";
     }
 
     if (typeof req.query.category_id === "string" && req.query.category_id.trim()) {

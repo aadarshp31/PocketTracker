@@ -51,7 +51,7 @@ export default function BulkImportPage() {
 
   const handleCsvFileProcess = (transactions: Array<{
     amount: number
-    type: 'income' | 'expense'
+    type: import('../types').TransactionType
     description: string
     date: string
     category_id?: string
@@ -71,7 +71,7 @@ export default function BulkImportPage() {
 
   const handleReviewConfirm = async (transactionsToImport: Array<{
     amount: number
-    type: 'income' | 'expense'
+    type: import('../types').TransactionType
     description: string
     date: string
     category_id: string

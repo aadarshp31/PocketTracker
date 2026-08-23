@@ -1,9 +1,10 @@
 import { http } from '../../../shared/api/http'
+import type { TransactionType } from '../types'
 
 export interface BulkImportPayload {
   transactions: Array<{
     amount: number
-    type: 'income' | 'expense'
+    type: TransactionType
     description: string
     date: string
     category_id: string

@@ -7,7 +7,7 @@ export interface PreviewTransaction {
   amount: number
   description: string
   date: string
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'investment' | 'transfer'
   category_id: string
 }
 
@@ -16,7 +16,7 @@ export interface BulkImportReviewProps {
   categorizedCount: number
   onConfirm: (transactionsToImport: Array<{
     amount: number
-    type: 'income' | 'expense'
+    type: 'income' | 'expense' | 'investment' | 'transfer'
     description: string
     date: string
     category_id: string
@@ -249,12 +249,14 @@ export function BulkImportReview({
                     <td className="px-4 py-2">
                       <select
                         value={tx.type}
-                        onChange={(e) => handleTransactionFieldChange(tx.index, 'type', e.target.value as 'income' | 'expense')}
+                        onChange={(e) => handleTransactionFieldChange(tx.index, 'type', e.target.value as 'income' | 'expense' | 'investment' | 'transfer')}
                         className="bulk-review-inline-select"
                         disabled={isLoading}
                       >
-                        <option value="expense">Expense</option>
-                        <option value="income">Income</option>
+                        <option value="expense">💳 Expense</option>
+                        <option value="income">💰 Income</option>
+                        <option value="investment">📈 Investment</option>
+                        <option value="transfer">🔄 Transfer</option>
                       </select>
                     </td>
 
@@ -266,7 +268,7 @@ export function BulkImportReview({
                         disabled={isLoading}
                       >
                         <option value="">Select category</option>
-                        {categoryOptions.map((category) => (
+                        {categoryOptions.filter((c) => c.type === tx.type).map((category) => (
                           <option key={category.id} value={category.id}>
                             {category.name}
                           </option>

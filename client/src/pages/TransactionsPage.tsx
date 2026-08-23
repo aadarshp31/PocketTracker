@@ -448,11 +448,11 @@ export function TransactionsPage() {
 
         <form onSubmit={onSubmit} className="quick-entry-form">
           <div className="quick-type-toggle" role="tablist" aria-label="transaction type">
-            {(['expense', 'income'] as TransactionType[]).map((type) => (
+            {(['expense', 'income', 'investment', 'transfer'] as TransactionType[]).map((type) => (
               <button
                 key={type}
                 type="button"
-                className={`type-pill ${form.type === type ? 'is-active' : ''}`}
+                className={`type-pill type-pill--${type} ${form.type === type ? 'is-active' : ''}`}
                 onClick={() => {
                   resetCategoryManualTracking()
                   setForm((prev) => ({
@@ -463,7 +463,10 @@ export function TransactionsPage() {
                 }}
                 disabled={isMutating}
               >
-                {type === 'expense' ? 'Expense' : 'Income'}
+                {type === 'expense' ? '💳 Expense'
+                  : type === 'income' ? '💰 Income'
+                  : type === 'investment' ? '📈 Investment'
+                  : '🔄 Transfer'}
               </button>
             ))}
           </div>

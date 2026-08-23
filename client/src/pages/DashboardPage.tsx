@@ -123,33 +123,99 @@ export function DashboardPage() {
       </div>
 
       {summary && (
-        <div className="table-wrap dashboard-card">
-          <div className="dashboard-card-header">
-            <div>
-              <h2>Monthly Summary</h2>
-              <p className="muted">Selected month versus the previous month.</p>
+        <>
+          {/* ── 4-KPI Financial Health Bar ── */}
+          <div className="dashboard-kpi-row">
+            <div className="dashboard-kpi-card kpi-income">
+              <div className="kpi-icon">💰</div>
+              <div className="kpi-body">
+                <span className="kpi-label">Income</span>
+                <span className="kpi-value">{formatCurrency(summary.currentMonth.totalIncome, currency)}</span>
+              </div>
+            </div>
+
+            <div className="dashboard-kpi-card kpi-expense">
+              <div className="kpi-icon">💳</div>
+              <div className="kpi-body">
+                <span className="kpi-label">True Spend</span>
+                <span className="kpi-value">{formatCurrency(summary.currentMonth.totalExpenses, currency)}</span>
+                {summary.comparison.delta !== '0.00' && (
+                  <span className={`kpi-delta ${summary.comparison.trend === 'up' ? 'kpi-delta--bad' : 'kpi-delta--good'}`}>
+                    {summary.comparison.trend === 'up' ? '▲' : '▼'} {summary.comparison.percentChange}% vs last month
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="dashboard-kpi-card kpi-investment">
+              <div className="kpi-icon">📈</div>
+              <div className="kpi-body">
+                <span className="kpi-label">Invested & Saved</span>
+                <span className="kpi-value">{formatCurrency(summary.currentMonth.totalInvestments, currency)}</span>
+                {Number(summary.comparison.investmentDelta) !== 0 && (
+                  <span className={`kpi-delta ${Number(summary.comparison.investmentDelta) > 0 ? 'kpi-delta--good' : 'kpi-delta--bad'}`}>
+                    {Number(summary.comparison.investmentDelta) > 0 ? '▲' : '▼'} vs last month
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className={`dashboard-kpi-card kpi-savings-rate ${
+              Number(summary.currentMonth.savingsRate) >= 20 ? 'rate-high'
+              : Number(summary.currentMonth.savingsRate) >= 10 ? 'rate-mid'
+              : 'rate-low'
+            }`}>
+              <div className="kpi-icon">
+                {Number(summary.currentMonth.savingsRate) >= 20 ? '🌟' : Number(summary.currentMonth.savingsRate) >= 10 ? '✅' : '⚠️'}
+              </div>
+              <div className="kpi-body">
+                <span className="kpi-label">Savings Rate</span>
+                <span className="kpi-value">{Number(summary.currentMonth.savingsRate).toFixed(1)}%</span>
+                <span className="kpi-sublabel">
+                  {Number(summary.currentMonth.savingsRate) >= 20 ? 'Excellent — keep it up!'
+                    : Number(summary.currentMonth.savingsRate) >= 10 ? 'Good — aim for 20%+'
+                    : Number(summary.currentMonth.totalIncome) === 0 ? 'No income recorded yet'
+                    : 'Low — try to invest more'}
+                </span>
+              </div>
             </div>
           </div>
-          <div className="dashboard-summary-grid">
-            <div className="dashboard-stat">
-              <p className="muted">Current Month</p>
-              <p className="dashboard-stat-value">{formatCurrency(summary.currentMonth.totalExpenses, currency)}</p>
+
+          {/* ── Expense trend card (compact) ── */}
+          <div className="table-wrap dashboard-card">
+            <div className="dashboard-card-header">
+              <div>
+                <h2>Monthly Summary</h2>
+                <p className="muted">Spend comparison vs previous month.</p>
+              </div>
             </div>
-            <div className="dashboard-stat">
-              <p className="muted">Previous Month</p>
-              <p className="dashboard-stat-value">{formatCurrency(summary.previousMonth.totalExpenses, currency)}</p>
-            </div>
-            <div className="dashboard-stat">
-              <p className="muted">Delta</p>
-              <p className={`dashboard-stat-value is-trend-${summary.comparison.trend}`}>
-                {formatCurrency(summary.comparison.delta, currency)}
-              </p>
-              <p className="dashboard-stat-meta">
-                {summary.comparison.percentChange}% · {summary.comparison.trend}
-              </p>
+            <div className="dashboard-summary-grid">
+              <div className="dashboard-stat">
+                <p className="muted">Spend this month</p>
+                <p className="dashboard-stat-value">{formatCurrency(summary.currentMonth.totalExpenses, currency)}</p>
+              </div>
+              <div className="dashboard-stat">
+                <p className="muted">Spend last month</p>
+                <p className="dashboard-stat-value">{formatCurrency(summary.previousMonth.totalExpenses, currency)}</p>
+              </div>
+              <div className="dashboard-stat">
+                <p className="muted">Delta</p>
+                <p className={`dashboard-stat-value is-trend-${summary.comparison.trend}`}>
+                  {formatCurrency(summary.comparison.delta, currency)}
+                </p>
+                <p className="dashboard-stat-meta">
+                  {summary.comparison.percentChange}% · {summary.comparison.trend}
+                </p>
+              </div>
+              {Number(summary.currentMonth.totalTransfers) > 0 && (
+                <div className="dashboard-stat">
+                  <p className="muted">Transfers</p>
+                  <p className="dashboard-stat-value is-transfer">{formatCurrency(summary.currentMonth.totalTransfers, currency)}</p>
+                </div>
+              )}
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {trend && categories && pattern && spikes ? (

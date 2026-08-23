@@ -11,14 +11,14 @@ export interface ManualTransaction {
   date: string
   description: string
   amount: number
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'investment' | 'transfer'
   category_id?: string
 }
 
 export interface QuickAddCategory {
   categoryId: string
   categoryName: string
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'investment' | 'transfer'
   frequency: number
 }
 
@@ -40,6 +40,8 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
   const categories = useMemo(() => categoriesData?.categories || [], [categoriesData?.categories])
   const incomeCategories = useMemo(() => categories.filter((cat) => cat.type === 'income'), [categories])
   const expenseCategories = useMemo(() => categories.filter((cat) => cat.type === 'expense'), [categories])
+  const investmentCategories = useMemo(() => categories.filter((cat) => cat.type === 'investment'), [categories])
+  const transferCategories = useMemo(() => categories.filter((cat) => cat.type === 'transfer'), [categories])
 
   useEffect(() => {
     if (transactions.length === 0) {
@@ -94,7 +96,7 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
     setTransactions((prev) => prev.filter((tx) => tx.id !== id))
   }
 
-  function scheduleAutoCategory(rowId: string, description: string, type: 'income' | 'expense') {
+  function scheduleAutoCategory(rowId: string, description: string, type: 'income' | 'expense' | 'investment' | 'transfer') {
     const existingTimer = debounceTimersRef.current.get(rowId)
     if (existingTimer) {
       window.clearTimeout(existingTimer)
@@ -135,7 +137,7 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
     }
 
     let nextDescription = ''
-    let nextType: 'income' | 'expense' = 'expense'
+    let nextType: 'income' | 'expense' | 'investment' | 'transfer' = 'expense'
 
     setTransactions((prev) =>
       prev.map((tx) => {
@@ -148,7 +150,7 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
 
         if (field === 'type') {
           nextTransaction.category_id = undefined
-          nextType = value as 'income' | 'expense'
+          nextType = value as 'income' | 'expense' | 'investment' | 'transfer'
           nextDescription = nextTransaction.description
         } else if (field === 'description') {
           nextDescription = String(value)
@@ -300,12 +302,14 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
                     <td className="px-4 py-2">
                       <select
                         value={tx.type}
-                        onChange={(e) => updateTransaction(tx.id, 'type', e.target.value as 'income' | 'expense')}
+                        onChange={(e) => updateTransaction(tx.id, 'type', e.target.value as 'income' | 'expense' | 'investment' | 'transfer')}
                         disabled={isLoading}
                         className="w-full px-2 py-1 border rounded"
                       >
-                        <option value="expense">Expense</option>
-                        <option value="income">Income</option>
+                        <option value="expense">💳 Expense</option>
+                        <option value="income">💰 Income</option>
+                        <option value="investment">📈 Investment</option>
+                        <option value="transfer">🔄 Transfer</option>
                       </select>
                     </td>
                     <td className="px-4 py-2">
@@ -316,17 +320,14 @@ export function BulkManualEntry({ onTransactionsReady, onError, isLoading = fals
                         className="w-full px-2 py-1 border rounded"
                       >
                         <option value="">Auto-assign in review</option>
-                        {tx.type === 'income'
-                          ? incomeCategories.map((cat: any) => (
-                            <option key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </option>
-                          ))
-                          : expenseCategories.map((cat: any) => (
-                            <option key={cat.id} value={cat.id}>
-                              {cat.name}
-                            </option>
-                          ))}
+                        {(tx.type === 'income' ? incomeCategories
+                          : tx.type === 'investment' ? investmentCategories
+                          : tx.type === 'transfer' ? transferCategories
+                          : expenseCategories).map((cat: any) => (
+                          <option key={cat.id} value={cat.id}>
+                            {cat.name}
+                          </option>
+                        ))}
                       </select>
                     </td>
                     <td className="px-4 py-2 text-center">

@@ -1,7 +1,7 @@
 export interface CategorizableCategory {
   id: string
   name: string
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'investment' | 'transfer'
 }
 
 export interface CategoryKeywordRule {
@@ -34,6 +34,18 @@ const CATEGORY_KEYWORDS: Record<string, string[]> = {
   education: ['tuition', 'school', 'university', 'college', 'education', 'course', 'training', 'book', 'textbook'],
   salary: ['salary', 'paycheck', 'payroll', 'wages', 'income'],
   'investment returns': ['dividend', 'interest', 'return', 'investment', 'stock', 'bond'],
+  // Investment categories
+  'mutual funds': ['sip', 'mutual fund', 'mf', 'kuvera', 'groww', 'mfcentral', 'nfo', 'nav'],
+  'stocks & etfs': ['zerodha', 'upstox', 'groww stocks', 'shares', 'equity', 'nse', 'bse', 'demat', 'etf', 'smallcase'],
+  'fixed deposit': ['fd', 'fixed deposit', 'term deposit', 'recurring deposit', 'rd'],
+  'provident fund': ['ppf', 'epf', 'nps', 'provident fund', 'pension fund', 'atal pension'],
+  'cryptocurrency': ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'wazirx', 'coinbase', 'binance', 'coinswitch'],
+  'gold & commodities': ['gold', 'sgb', 'sovereign gold bond', 'commodity', 'silver', 'platinum'],
+  'other investment': ['investment', 'invest', 'portfolio'],
+  // Transfer categories
+  'internal transfer': ['neft', 'imps', 'rtgs', 'transfer to', 'trf to', 'own account', 'self transfer', 'internal'],
+  'credit card payment': ['credit card', 'cc bill', 'card payment', 'cc payment'],
+  'loan repayment': ['emi', 'loan', 'repayment', 'mortgage', 'home loan', 'car loan', 'personal loan'],
 }
 
 export function flattenCategoryKeywordMappings(mappings: CategoryKeywordMapping[] | undefined | null): CategoryKeywordRule[] {
@@ -54,7 +66,7 @@ export function flattenCategoryKeywordMappings(mappings: CategoryKeywordMapping[
 
 export function categorizeTransaction(
   description: string,
-  type: 'income' | 'expense',
+  type: 'income' | 'expense' | 'investment' | 'transfer',
   categories: CategorizableCategory[],
   userRules: CategoryKeywordRule[] = [],
 ): string | null {
@@ -86,7 +98,7 @@ export function categorizeTransaction(
 
 export interface ImportRowInput {
   amount: number
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'investment' | 'transfer'
   description: string
   date: string
   category_id?: string
@@ -97,7 +109,7 @@ export interface ImportReviewTransaction {
   amount: number
   description: string
   date: string
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'investment' | 'transfer'
   category_id: string
 }
 

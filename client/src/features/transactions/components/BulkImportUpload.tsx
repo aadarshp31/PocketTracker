@@ -24,7 +24,7 @@ export interface CSVUploadProps {
   onFileProcess: (
     transactions: Array<{
       amount: number
-      type: 'income' | 'expense'
+      type: 'income' | 'expense' | 'investment' | 'transfer'
       description: string
       date: string
       category_id?: string
@@ -44,13 +44,31 @@ interface ParsedImportRow {
   rawRowIndex: number
   description: string
   amount: number
-  type: 'income' | 'expense'
+  type: 'income' | 'expense' | 'investment' | 'transfer'
   date: string    // YYYY-MM-DD, or '' when invalid
   rawDate: string // original cell value
   status: ImportRowStatus
 }
 
 const BALANCE_ROW_KEYWORDS = ['opening balance', 'closing balance', 'total', 'brought forward']
+
+// Keywords that signal investment transactions (debit to investment account)
+const INVESTMENT_KEYWORDS = [
+  'sip', 'mutual fund', 'mf investment', 'kuvera', 'groww', 'mfcentral',
+  'zerodha', 'upstox', 'smallcase', 'demat', 'etf',
+  'fd', 'fixed deposit', 'term deposit', 'recurring deposit',
+  'ppf', 'epf', 'nps', 'provident fund',
+  'bitcoin', 'btc', 'ethereum', 'wazirx', 'coinbase', 'binance', 'crypto',
+  'sgb', 'sovereign gold bond',
+]
+
+// Keywords that signal transfer transactions (money moves between own accounts)
+const TRANSFER_KEYWORDS = [
+  'neft to self', 'imps to self', 'rtgs to self', 'own account', 'self transfer',
+  'cc bill', 'credit card bill', 'credit card payment', 'card payment',
+  'emi', 'loan emi', 'loan repayment',
+  'trf to', 'transfer to ',
+]
 
 const HEADER_DETECTION_KEYWORDS = [
   'date', 'description', 'narration', 'particulars', 'amount', 'debit', 'credit',
@@ -321,7 +339,7 @@ export function BulkImportUpload({
       }
 
       let amount = 0
-      let type: 'income' | 'expense' = 'expense'
+      let type: 'income' | 'expense' | 'investment' | 'transfer' = 'expense'
       if (columnMapping.amountColumn !== undefined) {
         amount = parseAmount(row[columnMapping.amountColumn])
       } else {
@@ -342,6 +360,17 @@ export function BulkImportUpload({
           type = 'income'
         } else if (t) {
           type = 'expense'
+        }
+      }
+
+      // Smart keyword-based auto-classification for investment/transfer
+      // Only applies to debit (expense) rows — income is never re-classified
+      if (type === 'expense') {
+        const lowerDesc = descLower
+        if (INVESTMENT_KEYWORDS.some((kw) => lowerDesc.includes(kw))) {
+          type = 'investment'
+        } else if (TRANSFER_KEYWORDS.some((kw) => lowerDesc.includes(kw))) {
+          type = 'transfer'
         }
       }
 
@@ -1055,7 +1084,12 @@ export function BulkImportUpload({
                       </td>
                       <td className="px-3 py-2">
                         {row.status !== 'no_amount' && row.amount > 0 && (
-                          <span className={`bulk-preview-type-badge ${row.type}`}>{row.type}</span>
+                          <span className={`bulk-preview-type-badge ${row.type}`}>
+                            {row.type === 'income' ? '💰 income'
+                              : row.type === 'investment' ? '📈 investment'
+                              : row.type === 'transfer' ? '🔄 transfer'
+                              : '💳 expense'}
+                          </span>
                         )}
                       </td>
                       <td className="px-3 py-2">

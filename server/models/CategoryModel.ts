@@ -13,7 +13,7 @@ const CategoryModel = sequelize.define('category', {
     allowNull: false
   },
   type: {
-    type: DataTypes.ENUM("income", "expense"),
+    type: DataTypes.ENUM("income", "expense", "investment", "transfer"),
     allowNull: false
   },
   user_id: {
