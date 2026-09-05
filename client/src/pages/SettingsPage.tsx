@@ -272,7 +272,7 @@ export function ProfilePage() {
 
             <div>
               <p style={{ marginBottom: '0.25rem' }}><strong>Manual setup code</strong></p>
-              <code style={{ padding: '0.35rem 0.65rem', borderRadius: '0.4rem', background: 'var(--color-surface-subtle, rgba(0,0,0,0.05))', border: '1px solid var(--color-border, #ddd)' }}>{pendingEnrollment.secret}</code>
+              <code style={{ padding: '0.35rem 0.65rem', borderRadius: '0.4rem', background: 'var(--color-surface-subtle, rgba(0,0,0,0.05))', border: '1px solid var(--color-border, #ddd)', wordBreak: 'break-all', display: 'inline-block', maxWidth: '100%' }}>{pendingEnrollment.secret}</code>
             </div>
             <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--color-text-muted, #6b7280)' }}>
               Add this in a second authenticator app if you want a backup sign-in option.
@@ -342,7 +342,7 @@ export function ProfilePage() {
               </p>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
                 gap: '0.5rem',
                 padding: '1rem',
                 background: 'var(--color-surface, rgba(0,0,0,0.05))',
