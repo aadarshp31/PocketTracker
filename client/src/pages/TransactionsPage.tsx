@@ -135,11 +135,20 @@ export function TransactionsPage() {
     }
     return categoryNames.get(form.category_id) ?? null
   }, [categoryManuallySet, form.category_id, form.description, suggestedCategoryId, categoryNames])
+  const hasLoadedInitialDataRef = useRef(false)
+  if (!hasLoadedInitialDataRef.current && query.data && categoriesQuery.data && profileQuery.data) {
+    hasLoadedInitialDataRef.current = true
+  }
+
   const recentTransaction = query.data?.transactions?.[0] ?? null
   const filtersActive = hasActiveFilters(appliedFilters)
   const emptyListMessage = getEmptyListMessage(appliedFilters)
   const isInitialLoading =
-    (query.isLoading && !query.data) || categoriesQuery.isLoading || profileQuery.isLoading
+    !hasLoadedInitialDataRef.current &&
+    ((query.isLoading && !query.data) || categoriesQuery.isLoading || profileQuery.isLoading)
+  const hasLoadError =
+    !hasLoadedInitialDataRef.current &&
+    (categoriesQuery.isError || profileQuery.isError || (query.isError && !query.data))
   const isListFetching = query.isFetching && !isInitialLoading
 
   function syncFiltersToUrl(nextFilters: TransactionFilterState, nextPage: number, nextLimit: number) {
@@ -197,7 +206,6 @@ export function TransactionsPage() {
     deleteMutation.isPending ||
     createCategoryMutation.isPending
 
-  const hasLoadError = query.isError || categoriesQuery.isError || profileQuery.isError
   const transactions = query.data?.transactions ?? []
   const meta = query.data?.meta
   const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
@@ -633,6 +641,7 @@ export function TransactionsPage() {
         showClearFilters={filtersActive}
         showAllTimeAction={!filtersActive && isPeriodScoped(appliedFilters)}
         isMutating={isMutating}
+        isFetching={isListFetching}
         onEdit={onEdit}
         onDelete={onDeleteRequest}
         onCategoryChange={onCategoryChange}
@@ -647,6 +656,9 @@ export function TransactionsPage() {
       ) : null}
 
       {isListFetching ? <p className="muted transaction-list-loading">Updating list...</p> : null}
+      {query.isError && !isInitialLoading ? (
+        <p className="error transaction-list-loading">Failed to update transactions. Please try again.</p>
+      ) : null}
 
       {meta ? (
         <TransactionPagination

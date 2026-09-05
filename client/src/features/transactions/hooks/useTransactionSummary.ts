@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { getTransactionSummary } from '../api/getTransactionSummary'
 import type { GetTransactionsParams } from '../api/getTransactions'
 import { useAuth } from '../../auth/contexts/AuthContext'
@@ -18,5 +18,6 @@ export function useTransactionSummary(params: Omit<GetTransactionsParams, 'page'
     ],
     queryFn: () => getTransactionSummary(params),
     enabled: isAuthenticated,
+    placeholderData: keepPreviousData,
   })
 }

@@ -13,6 +13,7 @@ interface TransactionListProps {
   showClearFilters?: boolean
   showAllTimeAction?: boolean
   isMutating?: boolean
+  isFetching?: boolean
   onEdit: (transaction: Transaction) => void
   onDelete: (transactionId: string) => void
   onCategoryChange: (transactionId: string, categoryId: string) => void
@@ -41,6 +42,7 @@ export function TransactionList({
   showClearFilters = false,
   showAllTimeAction = false,
   isMutating = false,
+  isFetching = false,
   onEdit,
   onDelete,
   onCategoryChange,
@@ -62,7 +64,7 @@ export function TransactionList({
   }
 
   return (
-    <div className="table-wrap transaction-list-wrap">
+    <div className={`table-wrap transaction-list-wrap ${isFetching ? 'is-fetching' : ''}`} aria-busy={isFetching}>
       <table className="transaction-list-table">
         <thead>
           <tr>
