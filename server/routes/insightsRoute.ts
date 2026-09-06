@@ -11,5 +11,7 @@ insightsRoute.get("/categories", insightsController.getCategories.bind(insightsC
 insightsRoute.get("/daily-pattern", insightsController.getDailyPattern.bind(insightsController));
 insightsRoute.get("/spikes", insightsController.getSpikes.bind(insightsController));
 insightsRoute.get("/projection", insightsController.getProjection.bind(insightsController));
+insightsRoute.get("/spend-pacing", insightsController.getSpendPacing.bind(insightsController));
+insightsRoute.get("/budget-progress", insightsController.getBudgetProgress.bind(insightsController));
 
 export default insightsRoute;

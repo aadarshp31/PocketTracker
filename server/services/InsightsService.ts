@@ -1,6 +1,8 @@
 import { Op, QueryTypes } from "sequelize";
 import { sequelize } from "../config/dbConnection";
 import TransactionModel from "../models/TransactionModel";
+import BudgetModel from "../models/BudgetModel";
+import CategoryModel from "../models/CategoryModel";
 
 interface MonthWindow {
   start: Date;
@@ -55,13 +57,34 @@ export default class InsightsService {
     const series = await Promise.all(
       monthRefs.map(async ({ year: refYear, month: refMonth }) => {
         const window = getMonthWindow(refYear, refMonth);
-        const totalRaw = await TransactionModel.sum("amount", {
-          where: {
-            user_id: userId,
-            type: "expense",
-            date: { [Op.between]: [window.start, window.end] }
-          }
-        });
+        const [expensesRaw, incomeRaw, investmentsRaw] = await Promise.all([
+          TransactionModel.sum("amount", {
+            where: {
+              user_id: userId,
+              type: "expense",
+              date: { [Op.between]: [window.start, window.end] }
+            }
+          }),
+          TransactionModel.sum("amount", {
+            where: {
+              user_id: userId,
+              type: "income",
+              date: { [Op.between]: [window.start, window.end] }
+            }
+          }),
+          TransactionModel.sum("amount", {
+            where: {
+              user_id: userId,
+              type: "investment",
+              date: { [Op.between]: [window.start, window.end] }
+            }
+          })
+        ]);
+
+        const totalExpenses = Number(expensesRaw || 0);
+        const totalIncome = Number(incomeRaw || 0);
+        const totalInvestments = Number(investmentsRaw || 0);
+        const netCashFlow = totalIncome - totalExpenses - totalInvestments;
 
         return {
           month: refMonth,
@@ -71,7 +94,10 @@ export default class InsightsService {
             year: "2-digit",
             timeZone: "UTC"
           }),
-          totalExpenses: toFixed2(Number(totalRaw || 0))
+          totalExpenses: toFixed2(totalExpenses),
+          totalIncome: toFixed2(totalIncome),
+          totalInvestments: toFixed2(totalInvestments),
+          netCashFlow: toFixed2(netCashFlow)
         };
       })
     );
@@ -162,9 +188,12 @@ export default class InsightsService {
     const window = getMonthWindow(targetYear, targetMonth);
     const safeLimit = Math.min(Math.max(limit || 50, 1), 50);
 
-    const [rows, fullTotalRaw] = await Promise.all([
+    const previous = getPreviousMonth(targetYear, targetMonth);
+    const prevWindow = getMonthWindow(previous.year, previous.month);
+
+    const [rows, fullTotalRaw, prevRows] = await Promise.all([
       sequelize.query(
-      `
+        `
         SELECT
           t.category_id,
           c.name as category_name,
@@ -178,42 +207,95 @@ export default class InsightsService {
         ORDER BY total DESC
         LIMIT :limit
       `,
-      {
-        replacements: {
-          userId,
-          startDate: window.start,
-          endDate: window.end,
-          limit: safeLimit
-        },
-        type: QueryTypes.SELECT
-      }
-    ) as Promise<Array<{ category_id: string; category_name: string; total: string }>>,
+        {
+          replacements: {
+            userId,
+            startDate: window.start,
+            endDate: window.end,
+            limit: safeLimit
+          },
+          type: QueryTypes.SELECT
+        }
+      ) as Promise<Array<{ category_id: string; category_name: string; total: string }>>,
       TransactionModel.sum("amount", {
         where: {
           user_id: userId,
           type: "expense",
           date: { [Op.between]: [window.start, window.end] }
         }
-      })
+      }),
+      sequelize.query(
+        `
+        SELECT
+          t.category_id,
+          SUM(t.amount)::numeric(12,2) AS total
+        FROM transactions t
+        WHERE t.user_id = :userId
+          AND t.type = 'expense'
+          AND t.date BETWEEN :startDate AND :endDate
+        GROUP BY t.category_id
+      `,
+        {
+          replacements: {
+            userId,
+            startDate: prevWindow.start,
+            endDate: prevWindow.end
+          },
+          type: QueryTypes.SELECT
+        }
+      ) as Promise<Array<{ category_id: string; total: string }>>
     ]);
 
     const totalAmount = Number(fullTotalRaw || 0);
+    const prevCategoryMap = new Map<string, number>();
+    prevRows.forEach((r) => prevCategoryMap.set(r.category_id, Number(r.total)));
+
+    let topRiser: { categoryName: string; delta: string; percentChange: string } | null = null;
+    let topSaver: { categoryName: string; delta: string; percentChange: string } | null = null;
+    let maxIncrease = 0;
+    let maxDecrease = 0;
+
+    const categories = rows.map((row) => {
+      const amount = Number(row.total);
+      const percentage = totalAmount === 0 ? 0 : (amount / totalAmount) * 100;
+      const prevAmount = prevCategoryMap.get(row.category_id) ?? 0;
+      const delta = amount - prevAmount;
+      const percentChange = prevAmount === 0 ? (amount > 0 ? 100 : 0) : (delta / prevAmount) * 100;
+
+      if (delta > maxIncrease && delta > 0) {
+        maxIncrease = delta;
+        topRiser = {
+          categoryName: row.category_name,
+          delta: toFixed2(delta),
+          percentChange: toFixed2(percentChange)
+        };
+      } else if (delta < maxDecrease && delta < 0) {
+        maxDecrease = delta;
+        topSaver = {
+          categoryName: row.category_name,
+          delta: toFixed2(Math.abs(delta)),
+          percentChange: toFixed2(Math.abs(percentChange))
+        };
+      }
+
+      return {
+        categoryId: row.category_id,
+        categoryName: row.category_name,
+        total: toFixed2(amount),
+        percentage: toFixed2(percentage),
+        previousTotal: toFixed2(prevAmount),
+        delta: toFixed2(delta),
+        percentChange: toFixed2(percentChange)
+      };
+    });
 
     return {
       month: targetMonth,
       year: targetYear,
       totalExpenses: toFixed2(totalAmount),
-      categories: rows.map((row) => {
-        const amount = Number(row.total);
-        const percentage = totalAmount === 0 ? 0 : (amount / totalAmount) * 100;
-
-        return {
-          categoryId: row.category_id,
-          categoryName: row.category_name,
-          total: toFixed2(amount),
-          percentage: toFixed2(percentage)
-        };
-      })
+      topRiser,
+      topSaver,
+      categories
     };
   }
 
@@ -304,18 +386,272 @@ export default class InsightsService {
           date: row.day,
           total: toFixed2(total),
           ratio: toFixed2(ratio),
-          severity: ratio >= safeThreshold * 1.5 ? "high" : "medium",
+          severity: ratio >= safeThreshold * 1.5 ? ("high" as const) : ("medium" as const),
           isSpike
         };
       })
       .filter((row) => row.isSpike)
       .map(({ isSpike, ...rest }) => rest);
 
+    const spikeDates = spikes.map((row) => row.date);
+    const topTransactionsMap = new Map<string, Array<{ id: string; description: string; amount: string; categoryName: string }>>();
+
+    if (spikeDates.length > 0) {
+      const txRows = (await sequelize.query(
+        `
+          SELECT
+            t.id,
+            t.description,
+            t.amount::numeric(12,2) AS amount,
+            DATE(t.date)::text AS day,
+            COALESCE(c.name, 'General') AS category_name
+          FROM transactions t
+          LEFT JOIN categories c ON c.id = t.category_id
+          WHERE t.user_id = :userId
+            AND t.type = 'expense'
+            AND DATE(t.date) IN (:spikeDates)
+          ORDER BY t.amount DESC
+        `,
+        {
+          replacements: { userId, spikeDates },
+          type: QueryTypes.SELECT
+        }
+      )) as Array<{ id: string; description: string; amount: string; day: string; category_name: string }>;
+
+      for (const tx of txRows) {
+        const list = topTransactionsMap.get(tx.day) ?? [];
+        if (list.length < 3) {
+          list.push({
+            id: tx.id,
+            description: tx.description || "Unnamed transaction",
+            amount: toFixed2(Number(tx.amount)),
+            categoryName: tx.category_name
+          });
+          topTransactionsMap.set(tx.day, list);
+        }
+      }
+    }
+
+    const enhancedSpikes = spikes.map((s) => ({
+      ...s,
+      topTransactions: topTransactionsMap.get(s.date) || []
+    }));
+
     return {
       days: safeDays,
       threshold: safeThreshold,
       baselineAverage: toFixed2(average),
-      spikes
+      spikes: enhancedSpikes
+    };
+  }
+
+  async getSpendPacing(userId: string, month?: number, year?: number) {
+    const now = new Date();
+    const targetYear = year ?? now.getUTCFullYear();
+    const targetMonth = month ?? now.getUTCMonth() + 1;
+
+    const daysInMonth = new Date(Date.UTC(targetYear, targetMonth, 0)).getUTCDate();
+    const isCurrentMonth = targetYear === now.getUTCFullYear() && targetMonth === now.getUTCMonth() + 1;
+    const isPastMonth =
+      targetYear < now.getUTCFullYear() ||
+      (targetYear === now.getUTCFullYear() && targetMonth < now.getUTCMonth() + 1);
+
+    const daysElapsed = isCurrentMonth
+      ? Math.min(now.getUTCDate(), daysInMonth)
+      : isPastMonth
+        ? daysInMonth
+        : 0;
+
+    const currentWindow = getMonthWindow(targetYear, targetMonth);
+    const prevMonthRef = getPreviousMonth(targetYear, targetMonth);
+    const prevWindow = getMonthWindow(prevMonthRef.year, prevMonthRef.month);
+    const prevDaysInMonth = new Date(Date.UTC(prevMonthRef.year, prevMonthRef.month, 0)).getUTCDate();
+
+    const [currentRows, prevRows] = await Promise.all([
+      sequelize.query(
+        `
+          SELECT
+            EXTRACT(DAY FROM date)::int AS day,
+            SUM(amount)::numeric(12,2) AS total
+          FROM transactions
+          WHERE user_id = :userId
+            AND type = 'expense'
+            AND date BETWEEN :startDate AND :endDate
+          GROUP BY EXTRACT(DAY FROM date)
+          ORDER BY day ASC
+        `,
+        {
+          replacements: { userId, startDate: currentWindow.start, endDate: currentWindow.end },
+          type: QueryTypes.SELECT
+        }
+      ) as Promise<Array<{ day: number; total: string }>>,
+      sequelize.query(
+        `
+          SELECT
+            EXTRACT(DAY FROM date)::int AS day,
+            SUM(amount)::numeric(12,2) AS total
+          FROM transactions
+          WHERE user_id = :userId
+            AND type = 'expense'
+            AND date BETWEEN :startDate AND :endDate
+          GROUP BY EXTRACT(DAY FROM date)
+          ORDER BY day ASC
+        `,
+        {
+          replacements: { userId, startDate: prevWindow.start, endDate: prevWindow.end },
+          type: QueryTypes.SELECT
+        }
+      ) as Promise<Array<{ day: number; total: string }>>
+    ]);
+
+    const currentDayMap = new Map<number, number>();
+    currentRows.forEach((r) => currentDayMap.set(Number(r.day), Number(r.total)));
+
+    const prevDayMap = new Map<number, number>();
+    prevRows.forEach((r) => prevDayMap.set(Number(r.day), Number(r.total)));
+
+    let prevTotal = 0;
+    prevRows.forEach((r) => {
+      prevTotal += Number(r.total);
+    });
+
+    let currentCumulative = 0;
+    let prevCumulative = 0;
+    let prevCumulativeAtElapsed = 0;
+
+    const pacingDays = [];
+    for (let day = 1; day <= daysInMonth; day += 1) {
+      if (day <= prevDaysInMonth) {
+        prevCumulative += prevDayMap.get(day) ?? 0;
+      }
+      if (day === Math.min(daysElapsed, prevDaysInMonth)) {
+        prevCumulativeAtElapsed = prevCumulative;
+      }
+
+      let currentMonthVal: number | null = null;
+      if (day <= daysElapsed) {
+        currentCumulative += currentDayMap.get(day) ?? 0;
+        currentMonthVal = Number(toFixed2(currentCumulative));
+      }
+
+      const idealPacing = prevTotal > 0 ? Number(toFixed2((prevTotal / daysInMonth) * day)) : null;
+
+      pacingDays.push({
+        day,
+        label: `Day ${day}`,
+        currentMonthCumulative: currentMonthVal,
+        previousMonthCumulative: Number(toFixed2(prevCumulative)),
+        idealPacing
+      });
+    }
+
+    if (daysElapsed === 0) {
+      prevCumulativeAtElapsed = 0;
+    }
+
+    const paceDelta = currentCumulative - prevCumulativeAtElapsed;
+    const pacePercentChange =
+      prevCumulativeAtElapsed === 0 ? 0 : (paceDelta / prevCumulativeAtElapsed) * 100;
+    const burnRateStatus: "under" | "over" | "equal" =
+      paceDelta < -0.01 ? "under" : paceDelta > 0.01 ? "over" : "equal";
+
+    return {
+      month: targetMonth,
+      year: targetYear,
+      daysElapsed,
+      daysInMonth,
+      currentMonthToDate: toFixed2(currentCumulative),
+      previousMonthAtSameDay: toFixed2(prevCumulativeAtElapsed),
+      previousMonthTotal: toFixed2(prevTotal),
+      paceDelta: toFixed2(paceDelta),
+      pacePercentChange: toFixed2(pacePercentChange),
+      burnRateStatus,
+      pacingDays
+    };
+  }
+
+  async getBudgetProgress(userId: string, month?: number, year?: number) {
+    const now = new Date();
+    const targetYear = year ?? now.getUTCFullYear();
+    const targetMonth = month ?? now.getUTCMonth() + 1;
+    const window = getMonthWindow(targetYear, targetMonth);
+
+    const budgets = await BudgetModel.findAll({
+      where: {
+        user_id: userId,
+        start_date: { [Op.lte]: window.end },
+        end_date: { [Op.gte]: window.start }
+      }
+    });
+
+    if (budgets.length === 0) {
+      return {
+        hasBudgets: false,
+        month: targetMonth,
+        year: targetYear,
+        totalBudgeted: "0.00",
+        totalSpent: "0.00",
+        overallPercentage: "0.00",
+        budgets: []
+      };
+    }
+
+    const categoryIds = Array.from(new Set(budgets.map((b) => b.get("category_id") as string)));
+    const categories = await CategoryModel.findAll({
+      where: { id: { [Op.in]: categoryIds } }
+    });
+    const categoryNameMap = new Map<string, string>();
+    categories.forEach((c) => categoryNameMap.set(c.get("id") as string, c.get("name") as string));
+
+    let totalBudgetedNum = 0;
+    let totalSpentNum = 0;
+
+    const budgetItems = await Promise.all(
+      budgets.map(async (budget) => {
+        const categoryId = budget.get("category_id") as string;
+        const budgetAmount = Number(budget.get("amount") || 0);
+        totalBudgetedNum += budgetAmount;
+
+        const spentRaw = await TransactionModel.sum("amount", {
+          where: {
+            user_id: userId,
+            type: "expense",
+            category_id: categoryId,
+            date: { [Op.between]: [window.start, window.end] }
+          }
+        });
+
+        const actualSpent = Number(spentRaw || 0);
+        totalSpentNum += actualSpent;
+        const remaining = budgetAmount - actualSpent;
+        const percentageUsed = budgetAmount === 0 ? 0 : (actualSpent / budgetAmount) * 100;
+        const status: "ok" | "warning" | "exceeded" =
+          percentageUsed >= 100 ? "exceeded" : percentageUsed >= 80 ? "warning" : "ok";
+
+        return {
+          budgetId: budget.get("id") as string,
+          categoryId,
+          categoryName: categoryNameMap.get(categoryId) || "Uncategorized",
+          budgetAmount: toFixed2(budgetAmount),
+          actualSpent: toFixed2(actualSpent),
+          remaining: toFixed2(remaining),
+          percentageUsed: toFixed2(percentageUsed),
+          status
+        };
+      })
+    );
+
+    budgetItems.sort((a, b) => Number(b.percentageUsed) - Number(a.percentageUsed));
+    const overallPercentage = totalBudgetedNum === 0 ? 0 : (totalSpentNum / totalBudgetedNum) * 100;
+
+    return {
+      hasBudgets: true,
+      month: targetMonth,
+      year: targetYear,
+      totalBudgeted: toFixed2(totalBudgetedNum),
+      totalSpent: toFixed2(totalSpentNum),
+      overallPercentage: toFixed2(overallPercentage),
+      budgets: budgetItems
     };
   }
 

@@ -15,6 +15,9 @@ async function run() {
   const trend = await service.getMonthlyTrend(sampleUserId, 6)
   assert.equal(trend.series.length, 6)
   assert.ok(typeof trend.series[0]?.totalExpenses === 'string')
+  assert.ok(typeof trend.series[0]?.totalIncome === 'string')
+  assert.ok(typeof trend.series[0]?.totalInvestments === 'string')
+  assert.ok(typeof trend.series[0]?.netCashFlow === 'string')
 
   const categories = await service.getCategoryBreakdown(sampleUserId)
   assert.ok(Array.isArray(categories.categories))
@@ -27,6 +30,14 @@ async function run() {
 
   const projection = await service.getProjection(sampleUserId)
   assert.ok(typeof projection.projectedMonthEndExpenses === 'string')
+
+  const pacing = await service.getSpendPacing(sampleUserId)
+  assert.ok(Array.isArray(pacing.pacingDays))
+  assert.ok(['under', 'over', 'equal'].includes(pacing.burnRateStatus))
+
+  const budgetProgress = await service.getBudgetProgress(sampleUserId)
+  assert.ok(typeof budgetProgress.hasBudgets === 'boolean')
+  assert.ok(Array.isArray(budgetProgress.budgets))
 
   console.log('insightsService.test.ts: PASS')
 }

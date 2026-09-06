@@ -143,4 +143,38 @@ export default class InsightsController {
       res.status(400).json({ message: "something went wrong", error: error.message });
     }
   }
+
+  async getSpendPacing(req: Request, res: Response) {
+    try {
+      const userId = await this.resolveUserId(req);
+      if (!userId) {
+        res.status(401).json({ message: "User not authenticated" });
+        return;
+      }
+
+      const month = parseOptionalInt(req.query.month);
+      const year = parseOptionalInt(req.query.year);
+      const data = await this.insightsService.getSpendPacing(userId, month, year);
+      this.respondSuccess(res, data);
+    } catch (error: any) {
+      res.status(400).json({ message: "something went wrong", error: error.message });
+    }
+  }
+
+  async getBudgetProgress(req: Request, res: Response) {
+    try {
+      const userId = await this.resolveUserId(req);
+      if (!userId) {
+        res.status(401).json({ message: "User not authenticated" });
+        return;
+      }
+
+      const month = parseOptionalInt(req.query.month);
+      const year = parseOptionalInt(req.query.year);
+      const data = await this.insightsService.getBudgetProgress(userId, month, year);
+      this.respondSuccess(res, data);
+    } catch (error: any) {
+      res.status(400).json({ message: "something went wrong", error: error.message });
+    }
+  }
 }

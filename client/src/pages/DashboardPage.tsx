@@ -1,262 +1,365 @@
-import { Suspense, lazy } from 'react'
-import { useMemo, useState } from 'react'
-import { useCategories } from '../features/insights/hooks/useCategories'
-import { useDailyPattern } from '../features/insights/hooks/useDailyPattern'
-import { useMonthlyTrend } from '../features/insights/hooks/useMonthlyTrend'
-import { useProjection } from '../features/insights/hooks/useProjection'
-import { useSpikes } from '../features/insights/hooks/useSpikes'
-import { useSummary } from '../features/insights/hooks/useSummary'
-import { useProfile } from '../features/profile/hooks/useProfile'
-import { formatCurrency } from '../shared/utils/currency'
+import { Suspense, lazy } from 'react';
+import { useMemo, useState } from 'react';
+import { useCategories } from '../features/insights/hooks/useCategories';
+import { useDailyPattern } from '../features/insights/hooks/useDailyPattern';
+import { useMonthlyTrend } from '../features/insights/hooks/useMonthlyTrend';
+import { useProjection } from '../features/insights/hooks/useProjection';
+import { useSpikes } from '../features/insights/hooks/useSpikes';
+import { useSummary } from '../features/insights/hooks/useSummary';
+import { useSpendPacing } from '../features/insights/hooks/useSpendPacing';
+import { useBudgetProgress } from '../features/insights/hooks/useBudgetProgress';
+import { useProfile } from '../features/profile/hooks/useProfile';
+import { formatCurrency } from '../shared/utils/currency';
 
-const DashboardCharts = lazy(() => import('../features/insights/components/DashboardCharts'))
+const DashboardCharts = lazy(
+	() => import('../features/insights/components/DashboardCharts')
+);
 
 export function DashboardPage() {
-  const today = new Date()
-  const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1)
-  const [selectedYear, setSelectedYear] = useState(today.getFullYear())
+	const today = new Date();
+	const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1);
+	const [selectedYear, setSelectedYear] = useState(today.getFullYear());
 
-  const periodParams = useMemo(
-    () => ({ month: selectedMonth, year: selectedYear }),
-    [selectedMonth, selectedYear]
-  )
-  const yearOptions = useMemo(() => {
-    const currentYear = today.getFullYear()
-    return Array.from({ length: 4 }, (_, index) => currentYear - index)
-  }, [today])
+	const periodParams = useMemo(
+		() => ({ month: selectedMonth, year: selectedYear }),
+		[selectedMonth, selectedYear]
+	);
+	const yearOptions = useMemo(() => {
+		const currentYear = today.getFullYear();
+		return Array.from({ length: 4 }, (_, index) => currentYear - index);
+	}, [today]);
 
-  const profileQuery = useProfile()
-  const summaryQuery = useSummary(periodParams)
-  const trendQuery = useMonthlyTrend({ months: 12, ...periodParams })
-  const categoryQuery = useCategories({ limit: 50, ...periodParams })
-  const patternQuery = useDailyPattern({ days: 30 })
-  const spikesQuery = useSpikes({ days: 30, threshold: 2 })
-  const projectionQuery = useProjection(periodParams)
+	const profileQuery = useProfile();
+	const summaryQuery = useSummary(periodParams);
+	const trendQuery = useMonthlyTrend({ months: 12, ...periodParams });
+	const categoryQuery = useCategories({ limit: 50, ...periodParams });
+	const patternQuery = useDailyPattern({ days: 30 });
+	const spikesQuery = useSpikes({ days: 30, threshold: 2 });
+	const projectionQuery = useProjection(periodParams);
+	const pacingQuery = useSpendPacing(periodParams);
+	const budgetQuery = useBudgetProgress(periodParams);
 
-  const isLoading =
-    profileQuery.isLoading ||
-    summaryQuery.isLoading ||
-    trendQuery.isLoading ||
-    categoryQuery.isLoading ||
-    patternQuery.isLoading ||
-    spikesQuery.isLoading ||
-    projectionQuery.isLoading
+	const isLoading =
+		profileQuery.isLoading ||
+		summaryQuery.isLoading ||
+		trendQuery.isLoading ||
+		categoryQuery.isLoading ||
+		patternQuery.isLoading ||
+		spikesQuery.isLoading ||
+		projectionQuery.isLoading ||
+		pacingQuery.isLoading ||
+		budgetQuery.isLoading;
 
-  const hasError =
-    profileQuery.isError ||
-    summaryQuery.isError ||
-    trendQuery.isError ||
-    categoryQuery.isError ||
-    patternQuery.isError ||
-    spikesQuery.isError ||
-    projectionQuery.isError
+	const hasError =
+		profileQuery.isError ||
+		summaryQuery.isError ||
+		trendQuery.isError ||
+		categoryQuery.isError ||
+		patternQuery.isError ||
+		spikesQuery.isError ||
+		projectionQuery.isError;
 
-  if (isLoading) {
-    return (
-      <section>
-        <h1>Dashboard</h1>
-        <p>Loading insights...</p>
-      </section>
-    )
-  }
+	if (isLoading) {
+		return (
+			<section>
+				<h1>Dashboard</h1>
+				<p>Loading insights...</p>
+			</section>
+		);
+	}
 
-  if (hasError) {
-    return (
-      <section>
-        <h1>Dashboard</h1>
-        <p className="error">Failed to load insights.</p>
-      </section>
-    )
-  }
+	if (hasError) {
+		return (
+			<section>
+				<h1>Dashboard</h1>
+				<p className='error'>Failed to load insights.</p>
+			</section>
+		);
+	}
 
-  const summary = summaryQuery.data?.data
-  const trend = trendQuery.data?.data
-  const categories = categoryQuery.data?.data
-  const pattern = patternQuery.data?.data
-  const spikes = spikesQuery.data?.data
-  const projection = projectionQuery.data?.data
-  const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR'
+	const summary = summaryQuery.data?.data;
+	const trend = trendQuery.data?.data;
+	const categories = categoryQuery.data?.data;
+	const pattern = patternQuery.data?.data;
+	const spikes = spikesQuery.data?.data;
+	const projection = projectionQuery.data?.data;
+	const pacing = pacingQuery.data?.data;
+	const budgetProgress = budgetQuery.data?.data;
+	const currency = profileQuery.data?.users?.[0]?.currency ?? 'INR';
 
-  return (
-    <section className="dashboard-page">
-      <h1>Dashboard</h1>
-      <p className="muted">Insights based on your authenticated transaction history.</p>
+	const isCurrentMonth =
+		today.getMonth() + 1 === selectedMonth &&
+		today.getFullYear() === selectedYear;
+	const daysRemaining = projection
+		? Math.max(0, projection.daysInMonth - projection.daysElapsed)
+		: 0;
+	const incomeNum = Number(summary?.currentMonth.totalIncome || 0);
+	const spentNum = Number(projection?.monthToDateExpenses || 0);
+	const safeDailyRemaining =
+		isCurrentMonth && daysRemaining > 0 && incomeNum > spentNum
+			? (incomeNum - spentNum) / daysRemaining
+			: null;
 
-      <div className="table-wrap dashboard-card dashboard-filter-card">
-        <div className="dashboard-card-header">
-          <div>
-            <h2>Time Window</h2>
-            <p className="muted">Switch the reporting month for summary, category mix, trend, and projection.</p>
-          </div>
-        </div>
-        <div className="dashboard-filter-grid">
-          <label className="dashboard-filter-field" htmlFor="dashboard-month">
-            <span>Month</span>
-            <select
-              id="dashboard-month"
-              value={selectedMonth}
-              onChange={(event) => setSelectedMonth(Number(event.target.value))}
-            >
-              {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                <option key={month} value={month}>
-                  {new Date(Date.UTC(2026, month - 1, 1)).toLocaleString(undefined, { month: 'long', timeZone: 'UTC' })}
-                </option>
-              ))}
-            </select>
-          </label>
+	return (
+		<section className='dashboard-page'>
+			<h1>Dashboard</h1>
+			<p className='muted'>
+				Insights based on your authenticated transaction history.
+			</p>
 
-          <label className="dashboard-filter-field" htmlFor="dashboard-year">
-            <span>Year</span>
-            <select
-              id="dashboard-year"
-              value={selectedYear}
-              onChange={(event) => setSelectedYear(Number(event.target.value))}
-            >
-              {yearOptions.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
+			<div className='table-wrap dashboard-card dashboard-filter-card'>
+				<div className='dashboard-card-header'>
+					<div>
+						<h2>Time Window</h2>
+						<p className='muted'>
+							Switch the reporting month for summary, category mix, trend, and
+							projection.
+						</p>
+					</div>
+				</div>
+				<div className='dashboard-filter-grid'>
+					<label className='dashboard-filter-field' htmlFor='dashboard-month'>
+						<span>Month</span>
+						<select
+							id='dashboard-month'
+							value={selectedMonth}
+							onChange={(event) => setSelectedMonth(Number(event.target.value))}
+						>
+							{Array.from({ length: 12 }, (_, index) => index + 1).map(
+								(month) => (
+									<option key={month} value={month}>
+										{new Date(Date.UTC(2026, month - 1, 1)).toLocaleString(
+											undefined,
+											{ month: 'long', timeZone: 'UTC' }
+										)}
+									</option>
+								)
+							)}
+						</select>
+					</label>
 
-      {summary && (
-        <>
-          {/* ── 4-KPI Financial Health Bar ── */}
-          <div className="dashboard-kpi-row">
-            <div className="dashboard-kpi-card kpi-income">
-              <div className="kpi-icon">💰</div>
-              <div className="kpi-body">
-                <span className="kpi-label">Income</span>
-                <span className="kpi-value">{formatCurrency(summary.currentMonth.totalIncome, currency)}</span>
-              </div>
-            </div>
+					<label className='dashboard-filter-field' htmlFor='dashboard-year'>
+						<span>Year</span>
+						<select
+							id='dashboard-year'
+							value={selectedYear}
+							onChange={(event) => setSelectedYear(Number(event.target.value))}
+						>
+							{yearOptions.map((year) => (
+								<option key={year} value={year}>
+									{year}
+								</option>
+							))}
+						</select>
+					</label>
+				</div>
+			</div>
 
-            <div className="dashboard-kpi-card kpi-expense">
-              <div className="kpi-icon">💳</div>
-              <div className="kpi-body">
-                <span className="kpi-label">True Spend</span>
-                <span className="kpi-value">{formatCurrency(summary.currentMonth.totalExpenses, currency)}</span>
-                {summary.comparison.delta !== '0.00' && (
-                  <span className={`kpi-delta ${summary.comparison.trend === 'up' ? 'kpi-delta--bad' : 'kpi-delta--good'}`}>
-                    {summary.comparison.trend === 'up' ? '▲' : '▼'} {summary.comparison.percentChange}% vs last month
-                  </span>
-                )}
-              </div>
-            </div>
+			{summary && (
+				<>
+					{/* ── 4-KPI Financial Health Bar ── */}
+					<div className='dashboard-kpi-row'>
+						<div className='dashboard-kpi-card kpi-income'>
+							<div className='kpi-icon'>💰</div>
+							<div className='kpi-body'>
+								<span className='kpi-label'>Income</span>
+								<span className='kpi-value'>
+									{formatCurrency(summary.currentMonth.totalIncome, currency)}
+								</span>
+							</div>
+						</div>
 
-            <div className="dashboard-kpi-card kpi-investment">
-              <div className="kpi-icon">📈</div>
-              <div className="kpi-body">
-                <span className="kpi-label">Invested & Saved</span>
-                <span className="kpi-value">{formatCurrency(summary.currentMonth.totalInvestments, currency)}</span>
-                {Number(summary.comparison.investmentDelta) !== 0 && (
-                  <span className={`kpi-delta ${Number(summary.comparison.investmentDelta) > 0 ? 'kpi-delta--good' : 'kpi-delta--bad'}`}>
-                    {Number(summary.comparison.investmentDelta) > 0 ? '▲' : '▼'} vs last month
-                  </span>
-                )}
-              </div>
-            </div>
+						<div className='dashboard-kpi-card kpi-expense'>
+							<div className='kpi-icon'>💳</div>
+							<div className='kpi-body'>
+								<span className='kpi-label'>True Spend</span>
+								<span className='kpi-value'>
+									{formatCurrency(summary.currentMonth.totalExpenses, currency)}
+								</span>
+								{summary.comparison.delta !== '0.00' && (
+									<span
+										className={`kpi-delta ${summary.comparison.trend === 'up' ? 'kpi-delta--bad' : 'kpi-delta--good'}`}
+									>
+										{summary.comparison.trend === 'up' ? '▲' : '▼'}{' '}
+										{summary.comparison.percentChange}% vs last month
+									</span>
+								)}
+							</div>
+						</div>
 
-            <div className={`dashboard-kpi-card kpi-savings-rate ${
-              Number(summary.currentMonth.savingsRate) >= 20 ? 'rate-high'
-              : Number(summary.currentMonth.savingsRate) >= 10 ? 'rate-mid'
-              : 'rate-low'
-            }`}>
-              <div className="kpi-icon">
-                {Number(summary.currentMonth.savingsRate) >= 20 ? '🌟' : Number(summary.currentMonth.savingsRate) >= 10 ? '✅' : '⚠️'}
-              </div>
-              <div className="kpi-body">
-                <span className="kpi-label">Savings Rate</span>
-                <span className="kpi-value">{Number(summary.currentMonth.savingsRate).toFixed(1)}%</span>
-                <span className="kpi-sublabel">
-                  {Number(summary.currentMonth.savingsRate) >= 20 ? 'Excellent — keep it up!'
-                    : Number(summary.currentMonth.savingsRate) >= 10 ? 'Good — aim for 20%+'
-                    : Number(summary.currentMonth.totalIncome) === 0 ? 'No income recorded yet'
-                    : 'Low — try to invest more'}
-                </span>
-              </div>
-            </div>
-          </div>
+						<div className='dashboard-kpi-card kpi-investment'>
+							<div className='kpi-icon'>📈</div>
+							<div className='kpi-body'>
+								<span className='kpi-label'>Invested & Saved</span>
+								<span className='kpi-value'>
+									{formatCurrency(
+										summary.currentMonth.totalInvestments,
+										currency
+									)}
+								</span>
+								{Number(summary.comparison.investmentDelta) !== 0 && (
+									<span
+										className={`kpi-delta ${Number(summary.comparison.investmentDelta) > 0 ? 'kpi-delta--good' : 'kpi-delta--bad'}`}
+									>
+										{Number(summary.comparison.investmentDelta) > 0 ? '▲' : '▼'}{' '}
+										vs last month
+									</span>
+								)}
+							</div>
+						</div>
 
-          {/* ── Expense trend card (compact) ── */}
-          <div className="table-wrap dashboard-card">
-            <div className="dashboard-card-header">
-              <div>
-                <h2>Monthly Summary</h2>
-                <p className="muted">Spend comparison vs previous month.</p>
-              </div>
-            </div>
-            <div className="dashboard-summary-grid">
-              <div className="dashboard-stat">
-                <p className="muted">Spend this month</p>
-                <p className="dashboard-stat-value">{formatCurrency(summary.currentMonth.totalExpenses, currency)}</p>
-              </div>
-              <div className="dashboard-stat">
-                <p className="muted">Spend last month</p>
-                <p className="dashboard-stat-value">{formatCurrency(summary.previousMonth.totalExpenses, currency)}</p>
-              </div>
-              <div className="dashboard-stat">
-                <p className="muted">Delta</p>
-                <p className={`dashboard-stat-value is-trend-${summary.comparison.trend}`}>
-                  {formatCurrency(summary.comparison.delta, currency)}
-                </p>
-                <p className="dashboard-stat-meta">
-                  {summary.comparison.percentChange}% · {summary.comparison.trend}
-                </p>
-              </div>
-              {Number(summary.currentMonth.totalTransfers) > 0 && (
-                <div className="dashboard-stat">
-                  <p className="muted">Transfers</p>
-                  <p className="dashboard-stat-value is-transfer">{formatCurrency(summary.currentMonth.totalTransfers, currency)}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </>
-      )}
+						<div
+							className={`dashboard-kpi-card kpi-savings-rate ${
+								Number(summary.currentMonth.savingsRate) >= 20
+									? 'rate-high'
+									: Number(summary.currentMonth.savingsRate) >= 10
+										? 'rate-mid'
+										: 'rate-low'
+							}`}
+						>
+							<div className='kpi-icon'>
+								{Number(summary.currentMonth.savingsRate) >= 20
+									? '🌟'
+									: Number(summary.currentMonth.savingsRate) >= 10
+										? '✅'
+										: '⚠️'}
+							</div>
+							<div className='kpi-body'>
+								<span className='kpi-label'>Savings Rate</span>
+								<span className='kpi-value'>
+									{Number(summary.currentMonth.savingsRate).toFixed(1)}%
+								</span>
+								<span className='kpi-sublabel'>
+									{Number(summary.currentMonth.savingsRate) >= 20
+										? 'Excellent — keep it up!'
+										: Number(summary.currentMonth.savingsRate) >= 10
+											? 'Good — aim for 20%+'
+											: Number(summary.currentMonth.totalIncome) === 0
+												? 'No income recorded yet'
+												: 'Low — try to invest more'}
+								</span>
+							</div>
+						</div>
+					</div>
 
-      {trend && categories && pattern && spikes ? (
-        <Suspense fallback={<div className="table-wrap dashboard-card"><p className="muted">Loading charts...</p></div>}>
-          <DashboardCharts
-            currency={currency}
-            trendData={trend}
-            categoryData={categories}
-            patternData={pattern}
-            spikesData={spikes}
-            projection={projection}
-            dashboardMonth={selectedMonth}
-            dashboardYear={selectedYear}
-          />
-        </Suspense>
-      ) : null}
+					{/* ── Expense trend card (compact) ── */}
+					<div className='table-wrap dashboard-card'>
+						<div className='dashboard-card-header'>
+							<div>
+								<h2>Monthly Summary</h2>
+								<p className='muted'>Spend comparison vs previous month.</p>
+							</div>
+						</div>
+						<div className='dashboard-summary-grid'>
+							<div className='dashboard-stat'>
+								<p className='muted'>Spend this month</p>
+								<p className='dashboard-stat-value'>
+									{formatCurrency(summary.currentMonth.totalExpenses, currency)}
+								</p>
+							</div>
+							<div className='dashboard-stat'>
+								<p className='muted'>Spend last month</p>
+								<p className='dashboard-stat-value'>
+									{formatCurrency(
+										summary.previousMonth.totalExpenses,
+										currency
+									)}
+								</p>
+							</div>
+							<div className='dashboard-stat'>
+								<p className='muted'>Delta</p>
+								<p
+									className={`dashboard-stat-value is-trend-${summary.comparison.trend}`}
+								>
+									{formatCurrency(summary.comparison.delta, currency)}
+								</p>
+								<p className='dashboard-stat-meta'>
+									{summary.comparison.percentChange}% ·{' '}
+									{summary.comparison.trend}
+								</p>
+							</div>
+							{Number(summary.currentMonth.totalTransfers) > 0 && (
+								<div className='dashboard-stat'>
+									<p className='muted'>Transfers</p>
+									<p className='dashboard-stat-value is-transfer'>
+										{formatCurrency(
+											summary.currentMonth.totalTransfers,
+											currency
+										)}
+									</p>
+								</div>
+							)}
+						</div>
+					</div>
+				</>
+			)}
 
-      {projection && (
-        <div className="table-wrap dashboard-card">
-          <div className="dashboard-card-header">
-            <div>
-              <h2>End-of-Month Projection</h2>
-              <p className="muted">Estimated spend if the current daily average continues.</p>
-            </div>
-          </div>
-          <div className="dashboard-summary-grid">
-            <div className="dashboard-stat">
-              <p className="muted">Month-to-date</p>
-              <p className="dashboard-stat-value">{formatCurrency(projection.monthToDateExpenses, currency)}</p>
-            </div>
-            <div className="dashboard-stat">
-              <p className="muted">Avg / day</p>
-              <p className="dashboard-stat-value">{formatCurrency(projection.averagePerDay, currency)}</p>
-            </div>
-            <div className="dashboard-stat">
-              <p className="muted">Projected total</p>
-              <p className="dashboard-stat-value">{formatCurrency(projection.projectedMonthEndExpenses, currency)}</p>
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
-  )
+			{trend && categories ? (
+				<Suspense
+					fallback={
+						<div className='table-wrap dashboard-card'>
+							<p className='muted'>Loading charts...</p>
+						</div>
+					}
+				>
+					<DashboardCharts
+						currency={currency}
+						trendData={trend}
+						categoryData={categories}
+						pacingData={pacing}
+						budgetData={budgetProgress}
+						patternData={pattern}
+						spikesData={spikes}
+						projection={projection}
+						dashboardMonth={selectedMonth}
+						dashboardYear={selectedYear}
+					/>
+				</Suspense>
+			) : null}
+
+			{projection && (
+				<div className='table-wrap dashboard-card'>
+					<div className='dashboard-card-header'>
+						<div>
+							<h2>End-of-Month Projection</h2>
+							<p className='muted'>
+								Estimated spend if the current daily average continues.
+							</p>
+						</div>
+					</div>
+					<div className='dashboard-summary-grid'>
+						<div className='dashboard-stat'>
+							<p className='muted'>Month-to-date</p>
+							<p className='dashboard-stat-value'>
+								{formatCurrency(projection.monthToDateExpenses, currency)}
+							</p>
+						</div>
+						<div className='dashboard-stat'>
+							<p className='muted'>Avg / day</p>
+							<p className='dashboard-stat-value'>
+								{formatCurrency(projection.averagePerDay, currency)}
+							</p>
+						</div>
+						<div className='dashboard-stat'>
+							<p className='muted'>Projected total</p>
+							<p className='dashboard-stat-value'>
+								{formatCurrency(projection.projectedMonthEndExpenses, currency)}
+							</p>
+						</div>
+						{safeDailyRemaining !== null && (
+							<div className='dashboard-stat dashboard-stat-highlight'>
+								<p className='muted'>Safe Spend / Day</p>
+								<p className='dashboard-stat-value is-trend-down'>
+									{formatCurrency(safeDailyRemaining, currency)}
+								</p>
+								<p className='dashboard-stat-meta'>
+									For remaining {daysRemaining} days
+								</p>
+							</div>
+						)}
+					</div>
+				</div>
+			)}
+		</section>
+	);
 }
