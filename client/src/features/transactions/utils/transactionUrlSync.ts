@@ -11,8 +11,10 @@ const PERIOD_VALUES = new Set<PeriodPreset>([
 ])
 
 const SORT_VALUES = new Set<SortOption>(['newest', 'oldest', 'amount-desc', 'amount-asc'])
-const TYPE_VALUES = new Set<TypeFilter>(['all', 'income', 'expense'])
-const LIMIT_VALUES = new Set([10, 25, 50])
+const TYPE_VALUES = new Set<TypeFilter>(['all', 'income', 'expense', 'investment', 'transfer'])
+export const TRANSACTION_LIMIT_OPTIONS = [10, 25, 50, 75, 100] as const
+export type TransactionLimitOption = (typeof TRANSACTION_LIMIT_OPTIONS)[number]
+const LIMIT_VALUES = new Set<number>(TRANSACTION_LIMIT_OPTIONS)
 
 function parsePeriod(value: string | null): PeriodPreset {
   if (value && PERIOD_VALUES.has(value as PeriodPreset)) {
@@ -56,7 +58,7 @@ export function parseTransactionUrlState(searchParams: URLSearchParams): Transac
       sort: parseSort(searchParams.get('sort')),
     },
     page: Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1,
-    limit: LIMIT_VALUES.has(limitRaw as 10 | 25 | 50) ? limitRaw : 25,
+    limit: LIMIT_VALUES.has(limitRaw) ? limitRaw : 25,
   }
 }
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { RotateCcw, Trash2 } from 'lucide-react'
 import { useCategories } from '../hooks/useCategories'
+import { isInvalidImportTransaction } from '../utils/bulkImportValidation'
 
 export interface PreviewTransaction {
   index: number
@@ -52,8 +53,21 @@ export function BulkImportReview({
     field: keyof Pick<PreviewTransaction, 'date' | 'description' | 'amount' | 'type' | 'category_id'>,
     value: string | number,
   ) => {
+    if (reviewError) {
+      setReviewError('')
+    }
     setEditableTransactions((prev) => prev.map((tx) => {
       if (tx.index !== index) return tx
+      if (field === 'type') {
+        const newType = value as PreviewTransaction['type']
+        const currentCategory = categoryOptions.find((c) => c.id === tx.category_id)
+        const currentCategoryMatches = currentCategory?.type === newType
+        return {
+          ...tx,
+          type: newType,
+          category_id: currentCategoryMatches ? tx.category_id : '',
+        }
+      }
       return {
         ...tx,
         [field]: value,
@@ -118,16 +132,9 @@ export function BulkImportReview({
       return
     }
 
-    const invalidTransaction = transactionsToImport.find((tx) => {
-      return (
-        !tx.description ||
-        !tx.category_id ||
-        Number.isNaN(tx.amount) ||
-        tx.amount <= 0 ||
-        !/^\d{4}-\d{2}-\d{2}$/.test(tx.date) ||
-        (tx.type !== 'income' && tx.type !== 'expense')
-      )
-    })
+    const invalidTransaction = transactionsToImport.find((tx) =>
+      isInvalidImportTransaction(tx, categoryOptions)
+    )
 
     if (invalidTransaction) {
       setReviewError('Please fix invalid values (date, description, amount, type, category) before importing.')

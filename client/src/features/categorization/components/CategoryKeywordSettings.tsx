@@ -122,6 +122,8 @@ export function CategoryKeywordSettings() {
 
   const expenseCategories = categories.filter((category) => category.type === 'expense')
   const incomeCategories = categories.filter((category) => category.type === 'income')
+  const investmentCategories = categories.filter((category) => category.type === 'investment')
+  const transferCategories = categories.filter((category) => category.type === 'transfer')
 
   const isLoading = categoriesQuery.isLoading || mappingsQuery.isLoading
   const isBusy = addKeyword.isPending || removeKeyword.isPending
@@ -206,6 +208,49 @@ export function CategoryKeywordSettings() {
           })}
         </div>
       </div>
+      {investmentCategories.length > 0 && (
+        <div className="category-keyword-section">
+          <h3>Investment Categories</h3>
+          <div className="category-keyword-grid">
+            {investmentCategories.map((category) => {
+              const mapping = mappingsByCategoryId.get(category.id)
+              return (
+                <CategoryKeywordEditor
+                  key={category.id}
+                  category={category}
+                  keywords={mapping?.keywords ?? []}
+                  mappingId={mapping?.id}
+                  onAdd={handleAdd}
+                  onRemove={handleRemove}
+                  isBusy={isBusy}
+                />
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {transferCategories.length > 0 && (
+        <div className="category-keyword-section">
+          <h3>Transfer Categories</h3>
+          <div className="category-keyword-grid">
+            {transferCategories.map((category) => {
+              const mapping = mappingsByCategoryId.get(category.id)
+              return (
+                <CategoryKeywordEditor
+                  key={category.id}
+                  category={category}
+                  keywords={mapping?.keywords ?? []}
+                  mappingId={mapping?.id}
+                  onAdd={handleAdd}
+                  onRemove={handleRemove}
+                  isBusy={isBusy}
+                />
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

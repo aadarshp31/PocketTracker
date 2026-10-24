@@ -29,11 +29,11 @@ export default class TransactionController {
 
     if (req.query.limit) {
       const parsedLimit = parseInt(req.query.limit as string, 10);
-      options.limit = Number.isFinite(parsedLimit) ? parsedLimit : 10;
+      options.limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : 10;
     }
     if (req.query.page) {
       const parsedPage = parseInt(req.query.page as string, 10);
-      options.page = Number.isFinite(parsedPage) ? parsedPage : 1;
+      options.page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
     }
 
     if (["income", "expense", "investment", "transfer"].includes(req.query.type as string)) {

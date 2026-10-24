@@ -16,7 +16,8 @@
     "test": "echo \"No default test suite configured\"",
     "test:insights": "DOTENV_CONFIG_PATH=\"${ENV_FILE_PATH:-$HOME/adarsh-envs/PocketTracker/server/.env}\" node -r dotenv/config -r ts-node/register tests/insightsService.test.ts",
     "test:mfa-smoke": "DOTENV_CONFIG_PATH=\"${ENV_FILE_PATH:-$HOME/adarsh-envs/PocketTracker/server/.env}\" node -r dotenv/config -r ts-node/register tests/mfaMultiDeviceSmoke.test.ts",
-    "test:mfa-recovery-smoke": "DOTENV_CONFIG_PATH=\"${ENV_FILE_PATH:-$HOME/adarsh-envs/PocketTracker/server/.env}\" node -r dotenv/config -r ts-node/register tests/mfaRecoveryCodeSmoke.test.ts"
+    "test:mfa-recovery-smoke": "DOTENV_CONFIG_PATH=\"${ENV_FILE_PATH:-$HOME/adarsh-envs/PocketTracker/server/.env}\" node -r dotenv/config -r ts-node/register tests/mfaRecoveryCodeSmoke.test.ts",
+    "test:transactions": "DATABASE_URL=\"${DATABASE_URL:-postgres://user:pass@localhost:5432/test}\" SUPABASE_URL=\"${SUPABASE_URL:-https://dummy.supabase.co}\" SUPABASE_KEY=\"${SUPABASE_KEY:-dummy}\" SUPABASE_SERVICE_ROLE_KEY=\"${SUPABASE_SERVICE_ROLE_KEY:-dummy}\" ts-node tests/transactionPagination.test.ts"
   },
   "author": "aadarshp31",
   "license": "CC-BY-NC-4.0",

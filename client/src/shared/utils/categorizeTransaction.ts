@@ -13,7 +13,7 @@ export interface CategoryKeywordMapping {
   id: string
   category_id: string
   category_name: string
-  category_type: 'income' | 'expense'
+  category_type: 'income' | 'expense' | 'investment' | 'transfer'
   keywords: string[]
 }
 

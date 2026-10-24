@@ -1681,6 +1681,16 @@ button:disabled {
 	background: #fee2e2;
 }
 
+.transaction-type-badge.is-investment {
+	color: #0284c7;
+	background: #e0f2fe;
+}
+
+.transaction-type-badge.is-transfer {
+	color: #4f46e5;
+	background: #e0e7ff;
+}
+
 .transaction-actions-cell {
 	display: flex;
 	gap: 0.5rem;
@@ -4207,6 +4217,16 @@ button:disabled {
 [data-theme='dark'] .transaction-type-badge.is-expense {
 	background: rgba(239, 68, 68, 0.18);
 	color: #f87171;
+}
+
+[data-theme='dark'] .transaction-type-badge.is-investment {
+	background: rgba(14, 165, 233, 0.2);
+	color: #38bdf8;
+}
+
+[data-theme='dark'] .transaction-type-badge.is-transfer {
+	background: rgba(99, 102, 241, 0.2);
+	color: #818cf8;
 }
 
 [data-theme='dark']

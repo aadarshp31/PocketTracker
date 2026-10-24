@@ -9,7 +9,7 @@ export interface CategoryKeywordMappingRecord {
   id: string;
   category_id: string;
   category_name: string;
-  category_type: 'income' | 'expense';
+  category_type: 'income' | 'expense' | 'investment' | 'transfer';
   keywords: string[];
 }
 
@@ -72,7 +72,7 @@ export default class CategoryKeywordService {
         id: row.get('id') as string,
         category_id: categoryId,
         category_name: category.get('name') as string,
-        category_type: category.get('type') as 'income' | 'expense',
+        category_type: category.get('type') as 'income' | 'expense' | 'investment' | 'transfer',
         keywords,
       });
     }
@@ -164,7 +164,7 @@ export default class CategoryKeywordService {
       id: row.get('id') as string,
       category_id: categoryId,
       category_name: category.get('name') as string,
-      category_type: category.get('type') as 'income' | 'expense',
+      category_type: category.get('type') as 'income' | 'expense' | 'investment' | 'transfer',
       keywords: nextKeywords,
     };
   }

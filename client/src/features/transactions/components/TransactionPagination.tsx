@@ -1,4 +1,5 @@
 import type { PaginatedMeta } from '../types'
+import { TRANSACTION_LIMIT_OPTIONS } from '../utils/transactionUrlSync'
 
 interface TransactionPaginationProps {
   meta: PaginatedMeta
@@ -9,7 +10,7 @@ interface TransactionPaginationProps {
   onLimitChange: (limit: number) => void
 }
 
-const LIMIT_OPTIONS = [10, 25, 50]
+const LIMIT_OPTIONS = TRANSACTION_LIMIT_OPTIONS
 
 export function TransactionPagination({
   meta,

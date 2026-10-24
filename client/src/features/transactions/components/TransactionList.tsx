@@ -112,7 +112,7 @@ export function TransactionList({
                 >
                   <td>{formatTransactionDate(item.date)}</td>
                   <td>
-                    <span className={`transaction-type-badge ${item.type === 'income' ? 'is-income' : 'is-expense'}`}>
+                    <span className={`transaction-type-badge is-${item.type}`}>
                       {item.type}
                     </span>
                   </td>
