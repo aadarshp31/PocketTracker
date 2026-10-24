@@ -168,6 +168,34 @@ export function todayString(): string {
   return toYMD(n.getFullYear(), n.getMonth() + 1, n.getDate()) as string
 }
 
+const MONTH_ABBREVIATIONS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+]
+
+/**
+ * Formats a stored date string (YYYY-MM-DD or ISO) as dd/MMM/yy (e.g. 24/Oct/26).
+ * Safely parses DATEONLY without UTC day shift.
+ */
+export function formatTransactionDate(dateStr: string): string {
+  if (!dateStr) return ''
+  const m = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (m) {
+    const year = m[1].slice(-2)
+    const month = MONTH_ABBREVIATIONS[parseInt(m[2], 10) - 1]
+    const day = m[3]
+    if (month) return `${day}/${month}/${year}`
+  }
+  const d = new Date(dateStr)
+  if (!isNaN(d.getTime())) {
+    const day = String(d.getDate()).padStart(2, '0')
+    const month = MONTH_ABBREVIATIONS[d.getMonth()]
+    const year = String(d.getFullYear()).slice(-2)
+    if (month) return `${day}/${month}/${year}`
+  }
+  return dateStr ?? ''
+}
+
 /** Safely displays a stored DATEONLY string (YYYY-MM-DD) in the user's locale
  *  without parsing it as UTC midnight, which shifts the date backward in
  *  timezones ahead of UTC (e.g. IST, AEST). */

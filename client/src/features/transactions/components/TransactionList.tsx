@@ -1,5 +1,5 @@
 import { formatCurrency } from '../../../shared/utils/currency'
-import { safeLocaleDateString } from '../../../shared/utils/importDate'
+import { formatTransactionDate } from '../../../shared/utils/importDate'
 import type { CategoryItem } from '../api/getCategories'
 import type { Transaction } from '../types'
 
@@ -27,7 +27,7 @@ function categoriesForType(categories: CategoryItem[], type: Transaction['type']
 
 function buildRowLabel(transaction: Transaction, currency: string, categoryName: string) {
   const note = transaction.description?.trim() || 'Transaction'
-  const date = safeLocaleDateString(transaction.date)
+  const date = formatTransactionDate(transaction.date)
   const amount = formatCurrency(transaction.amount, currency)
   return `Edit ${note}, ${categoryName}, ${amount}, on ${date}`
 }
@@ -110,7 +110,7 @@ export function TransactionList({
                   onClick={() => handleRowActivate(item)}
                   onKeyDown={(event) => handleRowKeyDown(event, item)}
                 >
-                  <td>{safeLocaleDateString(item.date)}</td>
+                  <td>{formatTransactionDate(item.date)}</td>
                   <td>
                     <span className={`transaction-type-badge ${item.type === 'income' ? 'is-income' : 'is-expense'}`}>
                       {item.type}
