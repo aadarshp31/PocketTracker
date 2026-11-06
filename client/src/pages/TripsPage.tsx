@@ -8,7 +8,6 @@ import { useProfile } from '../features/profile/hooks/useProfile'
 import { formatCurrency } from '../shared/utils/currency'
 import { formatTransactionDate } from '../shared/utils/importDate'
 import type { Trip } from '../features/trips/types'
-import type { UpdateTripPayload } from '../features/trips/api/updateTrip'
 import { ConfirmDialog } from '../shared/components/ConfirmDialog'
 
 // ─── Create Trip Form ───────────────────────────────────────────────────────
@@ -201,6 +200,15 @@ function TripSummaryPanel({ tripId, currency }: { tripId: string; currency: stri
 
 // ─── Trip Edit Form ──────────────────────────────────────────────────────────
 
+interface EditTripFormState {
+	name: string
+	emoji: string
+	color: string
+	start_date: string
+	end_date: string
+	budget: string
+}
+
 interface EditTripFormProps {
 	trip: Trip
 	onCancel: () => void
@@ -208,7 +216,7 @@ interface EditTripFormProps {
 }
 
 function EditTripForm({ trip, onCancel, onSaved }: EditTripFormProps) {
-	const [form, setForm] = useState<UpdateTripPayload & { budget: string }>({
+	const [form, setForm] = useState<EditTripFormState>({
 		name: trip.name,
 		emoji: trip.emoji ?? '',
 		color: trip.color ?? '#6366f1',
@@ -221,19 +229,20 @@ function EditTripForm({ trip, onCancel, onSaved }: EditTripFormProps) {
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
-		if (!form.name?.trim()) { setError('Trip name is required.'); return }
+		if (!form.name.trim()) { setError('Trip name is required.'); return }
 		if (!form.start_date) { setError('Start date is required.'); return }
 		if (!form.end_date) { setError('End date is required.'); return }
-		if (form.end_date! < form.start_date!) { setError('End date must be on or after start date.'); return }
+		if (form.end_date < form.start_date) { setError('End date must be on or after start date.'); return }
 		setError('')
-		const { budget: budgetStr, ...rest } = form
 		await updateMutation.mutateAsync({
 			tripId: trip.id,
 			payload: {
-				...rest,
-				name: rest.name?.trim(),
-				emoji: (rest.emoji as string)?.trim() || null,
-				budget: budgetStr ? Number(budgetStr) : null,
+				name: form.name.trim(),
+				emoji: form.emoji.trim() || null,
+				color: form.color || null,
+				start_date: form.start_date,
+				end_date: form.end_date,
+				budget: form.budget ? Number(form.budget) : null,
 			},
 		})
 		onSaved()
@@ -246,7 +255,7 @@ function EditTripForm({ trip, onCancel, onSaved }: EditTripFormProps) {
 					<label>Name *</label>
 					<input
 						type="text"
-						value={form.name ?? ''}
+						value={form.name}
 						onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
 						disabled={updateMutation.isPending}
 					/>
@@ -257,7 +266,7 @@ function EditTripForm({ trip, onCancel, onSaved }: EditTripFormProps) {
 						type="text"
 						maxLength={4}
 						placeholder="✈"
-						value={(form.emoji as string) ?? ''}
+						value={form.emoji}
 						onChange={(e) => setForm((p) => ({ ...p, emoji: e.target.value }))}
 						disabled={updateMutation.isPending}
 					/>
@@ -266,7 +275,7 @@ function EditTripForm({ trip, onCancel, onSaved }: EditTripFormProps) {
 					<label>Color</label>
 					<input
 						type="color"
-						value={(form.color as string) ?? '#6366f1'}
+						value={form.color}
 						onChange={(e) => setForm((p) => ({ ...p, color: e.target.value }))}
 						disabled={updateMutation.isPending}
 					/>
@@ -275,7 +284,7 @@ function EditTripForm({ trip, onCancel, onSaved }: EditTripFormProps) {
 					<label>Start Date *</label>
 					<input
 						type="date"
-						value={form.start_date ?? ''}
+						value={form.start_date}
 						onChange={(e) => setForm((p) => ({ ...p, start_date: e.target.value }))}
 						disabled={updateMutation.isPending}
 					/>
@@ -284,7 +293,7 @@ function EditTripForm({ trip, onCancel, onSaved }: EditTripFormProps) {
 					<label>End Date *</label>
 					<input
 						type="date"
-						value={form.end_date ?? ''}
+						value={form.end_date}
 						onChange={(e) => setForm((p) => ({ ...p, end_date: e.target.value }))}
 						disabled={updateMutation.isPending}
 					/>
@@ -296,7 +305,7 @@ function EditTripForm({ trip, onCancel, onSaved }: EditTripFormProps) {
 						min="0"
 						step="0.01"
 						placeholder="Optional"
-						value={(form as { budget: string }).budget}
+						value={form.budget}
 						onChange={(e) => setForm((p) => ({ ...p, budget: e.target.value }))}
 						disabled={updateMutation.isPending}
 					/>
