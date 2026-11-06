@@ -12,6 +12,7 @@ export function useTransactionSummary(params: Omit<GetTransactionsParams, 'page'
       'summary',
       params.type ?? '',
       params.category_id ?? '',
+      params.trip_id ?? '',
       params.dateFrom ?? '',
       params.dateTo ?? '',
       params.search ?? '',

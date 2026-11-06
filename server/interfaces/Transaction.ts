@@ -6,6 +6,7 @@ export default interface Transaction {
   date?: string,
   category_id?: string | null;
   user_id?: string | null;
+  trip_id?: string | null;
   readonly createdAt?: string;
   readonly updatedAt?: string;
 }

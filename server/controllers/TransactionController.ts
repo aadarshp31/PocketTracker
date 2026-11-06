@@ -56,6 +56,10 @@ export default class TransactionController {
       options.search = req.query.search.trim();
     }
 
+    if (typeof req.query.trip_id === "string" && req.query.trip_id.trim()) {
+      options.trip_id = req.query.trip_id.trim();
+    }
+
     const sortColumn = typeof req.query.sort === "string" ? req.query.sort : "date";
     const sortOrder = req.query.order === "asc" ? "asc" : "desc";
     if (ALLOWED_SORT_COLUMNS.has(sortColumn)) {
@@ -132,6 +136,7 @@ export default class TransactionController {
         date: tn.get("date"),
         category_id: tn.get("category_id"),
         user_id: tn.get("user_id"),
+        trip_id: tn.get("trip_id"),
         createdAt: tn.get("createdAt"),
         updatedAt: tn.get("updatedAt")
       }));
@@ -172,6 +177,8 @@ export default class TransactionController {
         category_id: req.transaction.get("category_id"),
         // @ts-ignore
         user_id: req.transaction.get("user_id"),
+        // @ts-ignore
+        trip_id: req.transaction.get("trip_id"),
         // @ts-ignore
         createdAt: req.transaction.get("createdAt"),
         // @ts-ignore
@@ -265,6 +272,7 @@ export default class TransactionController {
             date: result.transactions.get("date"),
             category_id: result.transactions.get("category_id"),
             user_id: result.transactions.get("user_id"),
+            trip_id: result.transactions.get("trip_id"),
             createdAt: result.transactions.get("createdAt"),
             updatedAt: result.transactions.get("updatedAt")
           }
@@ -341,7 +349,8 @@ export default class TransactionController {
         description: transactionDetails.description,
         user_id: userId,
         category_id: transactionDetails.category_id,
-        date: transactionDetails.date
+        date: transactionDetails.date,
+        trip_id: transactionDetails.trip_id ?? null
       });
 
       res.status(201).json({

@@ -18,6 +18,7 @@ export async function getTransactionSummary(
 
   if (params.type) query.type = params.type
   if (params.category_id) query.category_id = params.category_id
+  if (params.trip_id) query.trip_id = params.trip_id
   if (params.dateFrom) query.dateFrom = params.dateFrom
   if (params.dateTo) query.dateTo = params.dateTo
   if (params.search?.trim()) query.search = params.search.trim()

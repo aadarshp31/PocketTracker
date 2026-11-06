@@ -8,6 +8,7 @@ export interface Transaction {
   date: string
   category_id: string
   user_id: string
+  trip_id?: string | null
   createdAt: string
   updatedAt: string
 }

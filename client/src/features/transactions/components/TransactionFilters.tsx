@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { CategoryItem } from '../api/getCategories'
+import type { Trip } from '../../trips/types'
 import type { TransactionFilterState, PeriodPreset, SortOption, TypeFilter } from '../utils/transactionFilters'
 import {
   buildFilterSummary,
@@ -11,6 +12,7 @@ interface TransactionFiltersProps {
   filters: TransactionFilterState
   appliedFilters: TransactionFilterState
   categories: CategoryItem[]
+  trips?: Trip[]
   hasPendingChanges?: boolean
   disabled?: boolean
   onChange: (next: TransactionFilterState) => void
@@ -39,6 +41,7 @@ export function TransactionFilters({
   filters,
   appliedFilters,
   categories,
+  trips = [],
   hasPendingChanges = false,
   disabled = false,
   onChange,
@@ -64,7 +67,8 @@ export function TransactionFilters({
   }
 
   const appliedCategoryName = categories.find((category) => category.id === appliedFilters.category_id)?.name
-  const appliedSummaryParts = buildFilterSummary(appliedFilters, appliedCategoryName)
+  const appliedTripName = trips.find((trip) => trip.id === appliedFilters.trip_id)?.name
+  const appliedSummaryParts = buildFilterSummary(appliedFilters, appliedCategoryName, appliedTripName)
   const showAppliedSummary = hasActiveFilters(appliedFilters)
 
   function patch(partial: Partial<TransactionFilterState>) {
@@ -143,6 +147,25 @@ export function TransactionFilters({
             ))}
           </select>
         </label>
+
+        {trips.length > 0 ? (
+          <label className="dashboard-filter-field" htmlFor="txn-filter-trip">
+            <span>Trip</span>
+            <select
+              id="txn-filter-trip"
+              value={filters.trip_id}
+              onChange={(event) => patch({ trip_id: event.target.value })}
+              disabled={disabled}
+            >
+              <option value="">All trips</option>
+              {trips.map((trip) => (
+                <option key={trip.id} value={trip.id}>
+                  {trip.emoji ? `${trip.emoji} ` : ''}{trip.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         <label className="dashboard-filter-field" htmlFor="txn-filter-search">
           <span>Search note</span>

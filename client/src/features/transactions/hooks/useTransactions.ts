@@ -12,6 +12,7 @@ export function useTransactions(params?: GetTransactionsParams) {
       params?.limit ?? 10,
       params?.type ?? '',
       params?.category_id ?? '',
+      params?.trip_id ?? '',
       params?.dateFrom ?? '',
       params?.dateTo ?? '',
       params?.search ?? '',

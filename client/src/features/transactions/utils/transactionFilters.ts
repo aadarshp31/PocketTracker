@@ -18,6 +18,7 @@ export interface TransactionFilterState {
   customDateTo: string
   type: TypeFilter
   category_id: string
+  trip_id: string
   search: string
   sort: SortOption
 }
@@ -28,6 +29,7 @@ export const defaultTransactionFilters: TransactionFilterState = {
   customDateTo: '',
   type: 'all',
   category_id: '',
+  trip_id: '',
   search: '',
   sort: 'newest',
 }
@@ -112,6 +114,7 @@ export function filtersToApiParams(filters: TransactionFilterState) {
     ...sortParams,
     ...(filters.type !== 'all' ? { type: filters.type } : {}),
     ...(filters.category_id ? { category_id: filters.category_id } : {}),
+    ...(filters.trip_id ? { trip_id: filters.trip_id } : {}),
     ...(filters.search.trim() ? { search: filters.search.trim() } : {}),
   }
 }
@@ -121,6 +124,7 @@ export function hasActiveFilters(filters: TransactionFilterState): boolean {
     filters.period !== defaultTransactionFilters.period ||
     filters.type !== defaultTransactionFilters.type ||
     filters.category_id !== '' ||
+    Boolean(filters.trip_id) ||
     filters.search.trim() !== '' ||
     filters.sort !== defaultTransactionFilters.sort
   )
@@ -168,7 +172,8 @@ export function getSortLabel(sort: SortOption): string {
 
 export function buildFilterSummary(
   filters: TransactionFilterState,
-  categoryName?: string
+  categoryName?: string,
+  tripName?: string
 ): string[] {
   const parts: string[] = [getPeriodLabel(filters.period)]
 
@@ -184,6 +189,10 @@ export function buildFilterSummary(
 
   if (filters.category_id && categoryName) {
     parts.push(categoryName)
+  }
+
+  if (filters.trip_id && tripName) {
+    parts.push(`✈ ${tripName}`)
   }
 
   if (filters.search.trim()) {
@@ -204,6 +213,7 @@ export function filtersAreEqual(a: TransactionFilterState, b: TransactionFilterS
     a.customDateTo === b.customDateTo &&
     a.type === b.type &&
     a.category_id === b.category_id &&
+    a.trip_id === b.trip_id &&
     a.search === b.search &&
     a.sort === b.sort
   )

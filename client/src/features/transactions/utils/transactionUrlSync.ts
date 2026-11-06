@@ -54,6 +54,7 @@ export function parseTransactionUrlState(searchParams: URLSearchParams): Transac
       customDateTo: searchParams.get('to') ?? '',
       type: parseType(searchParams.get('type')),
       category_id: searchParams.get('category') ?? '',
+      trip_id: searchParams.get('trip') ?? '',
       search: searchParams.get('search') ?? '',
       sort: parseSort(searchParams.get('sort')),
     },
@@ -85,6 +86,10 @@ export function buildTransactionSearchParams(
 
   if (filters.category_id) {
     params.set('category', filters.category_id)
+  }
+
+  if (filters.trip_id) {
+    params.set('trip', filters.trip_id)
   }
 
   if (debouncedSearch.trim()) {

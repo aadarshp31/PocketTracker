@@ -40,7 +40,16 @@ const TransactionModel = sequelize.define('transaction', {
     },
     onDelete: "CASCADE",
     allowNull: false
-  }
+  },
+  trip_id: {
+    type: DataTypes.UUID,
+    references: {
+      model: 'trips',
+      key: 'id'
+    },
+    onDelete: 'SET NULL',
+    allowNull: true
+  },
 }, {
   timestamps: true,
   indexes: [
@@ -51,6 +60,10 @@ const TransactionModel = sequelize.define('transaction', {
     {
       fields: ['user_id', 'category_id', 'date'],
       name: 'idx_transactions_user_category_date'
+    },
+    {
+      fields: ['trip_id'],
+      name: 'idx_transactions_trip_id'
     }
   ]
 });

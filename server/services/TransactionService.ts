@@ -12,6 +12,7 @@ export interface GetAllTransactionsOptions {
   dateFrom?: string;
   dateTo?: string;
   search?: string;
+  trip_id?: string;
 }
 
 export interface BulkCreatePayload {
@@ -53,6 +54,10 @@ export default class TransactionService {
     if (filters.search?.trim()) {
       const escaped = filters.search.trim().replace(/[%_\\]/g, '\\$&')
       where.description = { [Op.iLike]: `%${escaped}%` };
+    }
+
+    if (filters.trip_id) {
+      where.trip_id = filters.trip_id;
     }
 
     return where;
@@ -139,7 +144,8 @@ export default class TransactionService {
       description: transaction.description,
       user_id: transaction.user_id,
       category_id: transaction.category_id,
-      date: transaction.date
+      date: transaction.date,
+      trip_id: transaction.trip_id ?? null
     });
 
     return { transactions };
@@ -182,6 +188,10 @@ export default class TransactionService {
       }
 
       transaction.set("category_id", transactionDetails.category_id);
+    }
+
+    if (transactionDetails.trip_id !== undefined) {
+      transaction.set('trip_id', transactionDetails.trip_id || null);
     }
 
     const transactions = await transaction.save();

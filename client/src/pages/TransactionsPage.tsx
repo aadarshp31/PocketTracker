@@ -8,6 +8,7 @@ import { useCreateCategory } from '../features/transactions/hooks/useCreateCateg
 import { useUpdateTransaction } from '../features/transactions/hooks/useUpdateTransaction'
 import { useDeleteTransaction } from '../features/transactions/hooks/useDeleteTransaction'
 import { useProfile } from '../features/profile/hooks/useProfile'
+import { useTrips } from '../features/trips/hooks/useTrips'
 import { formatCurrency } from '../shared/utils/currency'
 import { todayString } from '../shared/utils/importDate'
 import type { Transaction, TransactionType } from '../features/transactions/types'
@@ -103,12 +104,14 @@ export function TransactionsPage() {
   const summaryQuery = useTransactionSummary(filterApiParams)
   const categoriesQuery = useCategories()
   const profileQuery = useProfile()
+  const tripsQuery = useTrips()
   const createMutation = useCreateTransaction()
   const createCategoryMutation = useCreateCategory()
   const updateMutation = useUpdateTransaction()
   const deleteMutation = useDeleteTransaction()
 
   const categories = categoriesQuery.data?.categories ?? []
+  const trips = tripsQuery.data?.trips ?? []
   const { rules: categoryKeywordRules } = useCategoryKeywordRules()
   const suggestedCategoryId = useAutoCategorize({
     description: form.description,
@@ -346,6 +349,17 @@ export function TransactionsPage() {
       }
     } catch {
       setFormNotice('Could not update category. Please try again.')
+    }
+  }
+
+  async function onTripChange(transactionId: string, tripId: string | null) {
+    try {
+      await updateMutation.mutateAsync({
+        transactionId,
+        payload: { trip_id: tripId },
+      })
+    } catch {
+      setFormNotice('Could not update trip. Please try again.')
     }
   }
 
@@ -617,6 +631,7 @@ export function TransactionsPage() {
         filters={draftFilters}
         appliedFilters={appliedFilters}
         categories={categories}
+        trips={trips}
         hasPendingChanges={hasPendingFilterChanges}
         disabled={isMutating}
         onChange={setDraftFilters}
@@ -642,9 +657,11 @@ export function TransactionsPage() {
         showAllTimeAction={!filtersActive && isPeriodScoped(appliedFilters)}
         isMutating={isMutating}
         isFetching={isListFetching}
+        trips={trips}
         onEdit={onEdit}
         onDelete={onDeleteRequest}
         onCategoryChange={onCategoryChange}
+        onTripChange={onTripChange}
         onClearFilters={clearFilters}
         onShowAllTime={showAllTime}
       />

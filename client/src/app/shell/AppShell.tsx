@@ -9,6 +9,7 @@ import {
   X,
   ChevronRight,
   Shield,
+  Luggage,
 } from 'lucide-react'
 import { useAuth } from '../../features/auth/contexts/AuthContext'
 import { MFA_REQUIRED_EVENT, type MfaRequiredEventDetail } from '../../shared/api/http'
@@ -17,6 +18,7 @@ import { ThemeToggle } from '../../shared/theme/ThemeToggle'
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/transactions', label: 'Transactions', icon: Receipt },
+  { to: '/trips', label: 'Trips', icon: Luggage },
 ]
 
 export function AppShell() {

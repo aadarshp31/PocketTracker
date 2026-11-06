@@ -7,6 +7,7 @@ export interface UpdateTransactionPayload {
   description?: string
   category_id?: string
   date?: string
+  trip_id?: string | null
 }
 
 export async function updateTransaction(transactionId: string, payload: UpdateTransactionPayload) {
