@@ -46,6 +46,8 @@ app.use(express.json({ limit: '2mb' }));
 // db connection
 connectToRelationalDatabase().then(async () => {
   await allSeeder();
+}).catch((err) => {
+  console.error('[Database]: Connection initialization error:', err);
 });
 
 // base endpoint to check status
